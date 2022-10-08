@@ -1,9 +1,8 @@
 #pragma once
 
-#include <serenity/MessageDetails/ArgContainer.h>
-#include <serenity/MessageDetails/ArgFormatter.h>
+#include <ArgContainer.h>
+#include <ArgFormatter.h>
 
-// Copied from Common.h -> avoids the cyclic include from Common.h when USE_STD_FORMAT and USE_FMTLIB aren't defined
 static constexpr bool IsDigit(const char& ch) {
 	return ((ch >= '0') && (ch <= '9'));
 }
@@ -11,9 +10,6 @@ static constexpr bool IsDigit(const char& ch) {
 static constexpr bool IsAlpha(const char& ch) {
 	return ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'));
 }
-
-// TODO: Address the notes scattered throughout and any other todo statements -> add the custom formatters for the custom flags from the logger
-//              side. Then go ahead and format everything into the file buffer being used directly and hopefully streamline the entire logging pipeline.
 
 static constexpr std::array<const char*, 12> short_months = {
 	"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -30,7 +26,7 @@ static constexpr std::array<const char*, 12> long_months = {
 
 template<typename T> struct is_basic_char_buff;
 template<typename T>
-struct is_basic_char_buff: std::bool_constant<std::is_same_v<type<T>, std::array<char, serenity::arg_formatter::SERENITY_ARG_BUFFER_SIZE>> ||
+struct is_basic_char_buff: std::bool_constant<std::is_same_v<type<T>, std::array<char, formatter::arg_formatter::AF_ARG_BUFFER_SIZE>> ||
                                               std::is_same_v<type<T>, std::vector<unsigned char>> || std::is_same_v<type<T>, std::vector<char>>>
 {
 };
@@ -55,19 +51,19 @@ static constexpr size_t se_from_chars(const char* begin, const char* end, Interg
 }
 
 constexpr auto fillBuffDefaultCapacity { 256 };
-constexpr serenity::arg_formatter::ArgFormatter::ArgFormatter()
+constexpr formatter::arg_formatter::ArgFormatter::ArgFormatter()
 	: argCounter(0), m_indexMode(IndexMode::automatic), bracketResults(BracketSearchResults {}), specValues(SpecFormatting {}), argStorage(ArgContainer {}),
-	  buffer(std::array<char, SERENITY_ARG_BUFFER_SIZE> {}), valueSize(size_t {}), fillBuffer(std::vector<char> {}), errHandle(serenity::error_handler {}),
+	  buffer(std::array<char, AF_ARG_BUFFER_SIZE> {}), valueSize(size_t {}), fillBuffer(std::vector<char> {}), errHandle(formatter::error_handler {}),
 	  timeSpec(TimeSpecs {}) {
 	// Initialize now to lower the initial cost when formatting (brings initial cost from ~33us down to ~11us). The Call To
 	// UtcOffset() will initialize TimeZoneInstance() via TimeZone() via TZInfo() -> thereby initializing  all function statics.
 	// NOTE: Would still love a constexpr friendly version of this but I'm not finding anything online that says that might be remotely possible
 	//               using the standard and I'd rather not have the cost of initialization fall on a logging call and rather fall on the construction call instead.
-	if( !std::is_constant_evaluated() ) serenity::globals::UtcOffset();
+	if( !std::is_constant_evaluated() ) formatter::globals::UtcOffset();
 	fillBuffer.reserve(fillBuffDefaultCapacity);
 }
 
-constexpr void serenity::arg_formatter::BracketSearchResults::Reset() {
+constexpr void formatter::arg_formatter::BracketSearchResults::Reset() {
 	if( !std::is_constant_evaluated() ) {
 			std::memset(this, 0, sizeof(BracketSearchResults));
 	} else {
@@ -75,14 +71,14 @@ constexpr void serenity::arg_formatter::BracketSearchResults::Reset() {
 		}
 }
 
-constexpr void serenity::arg_formatter::TimeSpecs::Reset() {
+constexpr void formatter::arg_formatter::TimeSpecs::Reset() {
 	// the arrays don't need anything special considering values
 	// get overriden by index assignment with the counter
 	timeSpecCounter = 0;
 	localizationBuff.clear();
 }
 
-constexpr void serenity::arg_formatter::SpecFormatting::ResetSpecs() {
+constexpr void formatter::arg_formatter::SpecFormatting::ResetSpecs() {
 	if( !std::is_constant_evaluated() ) {
 			std::memset(this, 0, sizeof(SpecFormatting));
 	} else {
@@ -137,8 +133,7 @@ static constexpr void FlushBuffer(T&& buff, size_t endPos, U&& container) {
 				}
 	} else if constexpr( std::is_same_v<CharType, char16_t> || (std::is_same_v<CharType, wchar_t> && sizeof(wchar_t) == 2) ) {
 			SE_ASSERT(utf_helper::IsLittleEndian(), "Big Endian Format Is Currently Unsupported. If Support Is Neccessary, Please Open A New Issue At "
-			                                        "'https://github.com/USAFrenzy/Serenity_Logger/issues' And/Or Define either USE_STD_FORMAT Or USE_FMTLIB "
-			                                        "instead.");
+			                                        "'https://github.com/USAFrenzy/ArgFormatter/issues'");
 			// Assume utf-16 encoding and convert from utf-8
 			if constexpr( se_con::is_string_v<U> || se_con::is_vector_v<U> ) {
 					utf_helper::U8ToU16(buff, container);
@@ -151,8 +146,7 @@ static constexpr void FlushBuffer(T&& buff, size_t endPos, U&& container) {
 				}
 	} else if constexpr( std::is_same_v<CharType, char32_t> || (std::is_same_v<CharType, wchar_t> && sizeof(wchar_t) == 4) ) {
 			SE_ASSERT(utf_helper::IsLittleEndian(), "Big Endian Format Is Currently Unsupported. If Support Is Neccessary, Please Open A New Issue At "
-			                                        "'https://github.com/USAFrenzy/Serenity_Logger/issues' And/Or Define either USE_STD_FORMAT Or USE_FMTLIB "
-			                                        "instead.");
+			                                        "'https://github.com/USAFrenzy/ArgFormatter/issues'");
 			// Assume utf-32 encoding and convert from utf-8
 			if constexpr( se_con::is_string_v<U> || se_con::is_vector_v<U> ) {
 					utf_helper::U8ToU32(buff, container);
@@ -166,9 +160,9 @@ static constexpr void FlushBuffer(T&& buff, size_t endPos, U&& container) {
 	}
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteBufferToContainer(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteBufferToContainer(T&& container) {
 	if( !specValues.localize ) {
-			using BuffRef = FwdRef<std::array<char, SERENITY_ARG_BUFFER_SIZE>>;
+			using BuffRef = FwdRef<std::array<char, AF_ARG_BUFFER_SIZE>>;
 			FlushBuffer(std::forward<BuffRef>(buffer), valueSize, std::forward<T>(container));
 	} else {
 			using BuffRef = FwdRef<std::vector<unsigned char>>;
@@ -181,35 +175,35 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Write
 		}
 }
 
-template<typename Iter, typename... Args> constexpr auto serenity::arg_formatter::ArgFormatter::CaptureArgs(Iter&& iter, Args&&... args) -> decltype(iter) {
+template<typename Iter, typename... Args> constexpr auto formatter::arg_formatter::ArgFormatter::CaptureArgs(Iter&& iter, Args&&... args) -> decltype(iter) {
 	return std::move(argStorage.CaptureArgs(std::move(iter), std::forward<Args>(args)...));
 }
 
 template<typename T, typename... Args>
-constexpr void serenity::arg_formatter::ArgFormatter::se_format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args) {
+constexpr void formatter::arg_formatter::ArgFormatter::se_format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args) {
 	ParseFormatString(std::move(CaptureArgs(std::move(Iter), std::forward<Args>(args)...)), sv);
 }
 
 template<typename T, typename... Args>
-constexpr void serenity::arg_formatter::ArgFormatter::se_format_to(std::back_insert_iterator<T>&& Iter, const std::locale& loc, std::string_view sv, Args&&... args) {
+constexpr void formatter::arg_formatter::ArgFormatter::se_format_to(std::back_insert_iterator<T>&& Iter, const std::locale& loc, std::string_view sv, Args&&... args) {
 	ParseFormatString(std::move(CaptureArgs(std::move(Iter), std::forward<Args>(args)...)), loc, sv);
 }
 
-template<typename... Args> std::string serenity::arg_formatter::ArgFormatter::se_format(std::string_view sv, Args&&... args) {
+template<typename... Args> std::string formatter::arg_formatter::ArgFormatter::se_format(std::string_view sv, Args&&... args) {
 	std::string tmp;
 	tmp.reserve(ReserveCapacity(std::forward<Args>(args)...));
 	se_format_to(std::back_inserter(tmp), sv, std::forward<Args>(args)...);
 	return tmp;
 }
 
-template<typename... Args> std::string serenity::arg_formatter::ArgFormatter::se_format(const std::locale& loc, std::string_view sv, Args&&... args) {
+template<typename... Args> std::string formatter::arg_formatter::ArgFormatter::se_format(const std::locale& loc, std::string_view sv, Args&&... args) {
 	std::string tmp;
 	tmp.reserve(ReserveCapacity(std::forward<Args>(args)...));
 	se_format_to(std::back_inserter(tmp), loc, sv, std::forward<Args>(args)...);
 	return tmp;
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteAlignedLeft(T&& container, const int& totalWidth) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteAlignedLeft(T&& container, const int& totalWidth) {
 	if( totalWidth > fillBuffDefaultCapacity ) fillBuffer.reserve(totalWidth);
 	FillBuffWithChar(totalWidth);
 	std::memcpy(fillBuffer.data(), buffer.data(), valueSize);
@@ -217,14 +211,14 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Write
 }
 
 template<typename T>
-constexpr void serenity::arg_formatter::ArgFormatter::WriteAlignedLeft(T&& container, std::string_view val, const int& precision, const int& totalWidth) {
+constexpr void formatter::arg_formatter::ArgFormatter::WriteAlignedLeft(T&& container, std::string_view val, const int& precision, const int& totalWidth) {
 	if( totalWidth > fillBuffDefaultCapacity ) fillBuffer.reserve(totalWidth);
 	FillBuffWithChar(totalWidth);
 	std::memcpy(fillBuffer.data(), val.data(), precision);
 	FlushBuffer(fillBuffer, totalWidth, std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteAlignedRight(T&& container, const int& totalWidth, const size_t& fillAmount) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteAlignedRight(T&& container, const int& totalWidth, const size_t& fillAmount) {
 	if( totalWidth > fillBuffDefaultCapacity ) fillBuffer.reserve(totalWidth);
 	FillBuffWithChar(totalWidth);
 	std::memcpy(fillBuffer.data() + fillAmount, buffer.data(), valueSize);
@@ -232,7 +226,7 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Write
 }
 
 template<typename T>
-constexpr void serenity::arg_formatter::ArgFormatter::WriteAlignedRight(T&& container, std::string_view val, const int& precision, const int& totalWidth,
+constexpr void formatter::arg_formatter::ArgFormatter::WriteAlignedRight(T&& container, std::string_view val, const int& precision, const int& totalWidth,
                                                                         const size_t& fillAmount) {
 	if( totalWidth > fillBuffDefaultCapacity ) fillBuffer.reserve(totalWidth);
 	FillBuffWithChar(totalWidth);
@@ -240,7 +234,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::WriteAlignedRight(T&& cont
 	FlushBuffer(fillBuffer, totalWidth, std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteAlignedCenter(T&& container, const int& totalWidth, const size_t& fillAmount) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteAlignedCenter(T&& container, const int& totalWidth, const size_t& fillAmount) {
 	if( totalWidth > fillBuffDefaultCapacity ) fillBuffer.reserve(totalWidth);
 	FillBuffWithChar(totalWidth);
 	std::memcpy(fillBuffer.data() + fillAmount, buffer.data(), valueSize);
@@ -248,7 +242,7 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Write
 }
 
 template<typename T>
-constexpr void serenity::arg_formatter::ArgFormatter::WriteAlignedCenter(T&& container, std::string_view val, const int& precision, const int& totalWidth,
+constexpr void formatter::arg_formatter::ArgFormatter::WriteAlignedCenter(T&& container, std::string_view val, const int& precision, const int& totalWidth,
                                                                          const size_t& fillAmount) {
 	if( totalWidth > fillBuffDefaultCapacity ) fillBuffer.reserve(totalWidth);
 	FillBuffWithChar(totalWidth);
@@ -256,24 +250,24 @@ constexpr void serenity::arg_formatter::ArgFormatter::WriteAlignedCenter(T&& con
 	FlushBuffer(fillBuffer, totalWidth, std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteNonAligned(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteNonAligned(T&& container) {
 	FlushBuffer(buffer, valueSize, std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteNonAligned(T&& container, std::string_view val, const int& precision) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteNonAligned(T&& container, std::string_view val, const int& precision) {
 	FlushBuffer(val, precision, std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimplePadding(T&& container, const size_t& fillAmount) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimplePadding(T&& container, const size_t& fillAmount) {
 	FlushBuffer(buffer, fillAmount, std::forward<T>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FillBuffWithChar(const int& totalWidth) {
+constexpr void formatter::arg_formatter::ArgFormatter::FillBuffWithChar(const int& totalWidth) {
 	!std::is_constant_evaluated() ? static_cast<void>(std::memset(fillBuffer.data(), specValues.fillCharacter, totalWidth))
 								  : fillBuffer.resize(totalWidth, specValues.fillCharacter);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::FormatAlignment(T&& container, const int& totalWidth) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::FormatAlignment(T&& container, const int& totalWidth) {
 	if( auto fill { (totalWidth > valueSize) ? totalWidth - valueSize : 0 }; fill != 0 ) {
 			switch( specValues.align ) {
 					case Alignment::AlignLeft: return WriteAlignedLeft(std::forward<FwdRef<T>>(container), totalWidth);
@@ -287,7 +281,7 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Forma
 }
 
 template<typename T>
-constexpr void serenity::arg_formatter::ArgFormatter::FormatAlignment(T&& container, std::string_view val, const int& totalWidth, int precision) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatAlignment(T&& container, std::string_view val, const int& totalWidth, int precision) {
 	auto size { static_cast<int>(val.size()) };
 	precision = precision != 0 ? precision > size ? size : precision : size;
 	if( auto fill { totalWidth > size ? totalWidth - size : 0 }; fill != 0 ) {
@@ -302,7 +296,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatAlignment(T&& contai
 		}
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Format(T&& container, const msg_details::SpecType& argType) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Format(T&& container, const msg_details::SpecType& argType) {
 	auto precision { specValues.nestedPrecArgPos != 0 ? argStorage.int_state(specValues.nestedPrecArgPos) : specValues.precision != 0 ? specValues.precision : 0 };
 	auto totalWidth { specValues.nestedWidthArgPos != 0  ? argStorage.int_state(specValues.nestedWidthArgPos)
 		              : specValues.alignmentPadding != 0 ? specValues.alignmentPadding
@@ -341,7 +335,7 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Forma
 		}
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Format(T&& container, const std::locale& loc, const msg_details::SpecType& argType) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Format(T&& container, const std::locale& loc, const msg_details::SpecType& argType) {
 	auto precision { specValues.nestedPrecArgPos != 0 ? argStorage.int_state(specValues.nestedPrecArgPos) : specValues.precision != 0 ? specValues.precision : 0 };
 	auto totalWidth { specValues.nestedWidthArgPos != 0  ? argStorage.int_state(specValues.nestedWidthArgPos)
 		              : specValues.alignmentPadding != 0 ? specValues.alignmentPadding
@@ -413,7 +407,7 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Forma
 //		}
 // }
 
-constexpr void serenity::arg_formatter::ArgFormatter::VerifyTimeSpec(std::string_view sv, size_t& pos) {
+constexpr void formatter::arg_formatter::ArgFormatter::VerifyTimeSpec(std::string_view sv, size_t& pos) {
 	// this is for c-time formatting
 	auto size { sv.size() };
 	for( ;; ) {
@@ -504,7 +498,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::VerifyTimeSpec(std::string
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::VerifyFillAlignTimeField(std::string_view sv, size_t& currentPos) {
+constexpr void formatter::arg_formatter::ArgFormatter::VerifyFillAlignTimeField(std::string_view sv, size_t& currentPos) {
 	const auto& ch { sv[ currentPos ] };
 	switch( ++currentPos >= sv.size() ? '}' : sv[ currentPos ] ) {
 			case '<': OnAlignLeft(ch, currentPos); return;
@@ -517,7 +511,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::VerifyFillAlignTimeField(s
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::VerifyTimePrecisionField(std::string_view sv, size_t& currentPosition) {
+constexpr void formatter::arg_formatter::ArgFormatter::VerifyTimePrecisionField(std::string_view sv, size_t& currentPosition) {
 	using enum msg_details::SpecType;
 	if( const auto& ch { sv[ ++currentPosition ] }; IsDigit(ch) ) {
 			auto data { sv.data() };
@@ -533,7 +527,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::VerifyTimePrecisionField(s
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::ParseTimeField(std::string_view sv, size_t& start) {
+constexpr void formatter::arg_formatter::ArgFormatter::ParseTimeField(std::string_view sv, size_t& start) {
 	timeSpec.Reset();
 	auto svSize { sv.size() };
 	if( sv[ start ] != '%' ) {
@@ -556,7 +550,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::ParseTimeField(std::string
 	VerifyTimeSpec(sv, ++start);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::FormatTimeField(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::FormatTimeField(T&& container) {
 	auto precision { specValues.nestedPrecArgPos != 0 ? argStorage.int_state(specValues.nestedPrecArgPos) : specValues.precision != 0 ? specValues.precision : 0 };
 	auto totalWidth { specValues.nestedWidthArgPos != 0  ? argStorage.int_state(specValues.nestedWidthArgPos)
 		              : specValues.alignmentPadding != 0 ? specValues.alignmentPadding
@@ -575,7 +569,7 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Forma
 		}
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::FormatTimeField(T&& container, const std::locale& loc) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::FormatTimeField(T&& container, const std::locale& loc) {
 	auto precision { specValues.nestedPrecArgPos != 0 ? argStorage.int_state(specValues.nestedPrecArgPos) : specValues.precision != 0 ? specValues.precision : 0 };
 	auto totalWidth { specValues.nestedWidthArgPos != 0  ? argStorage.int_state(specValues.nestedWidthArgPos)
 		              : specValues.alignmentPadding != 0 ? specValues.alignmentPadding
@@ -594,7 +588,7 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Forma
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::Parse(std::string_view sv, size_t& start, const msg_details::SpecType& argType) {
+constexpr void formatter::arg_formatter::ArgFormatter::Parse(std::string_view sv, size_t& start, const msg_details::SpecType& argType) {
 	auto svSize { sv.size() };
 	VerifyFillAlignField(sv, start, argType);
 	if( start >= svSize ) return;
@@ -642,9 +636,9 @@ constexpr void serenity::arg_formatter::ArgFormatter::Parse(std::string_view sv,
 
 // As cluttered as this is, I kind of have to leave it like it is at the moment. When decluttering and abstracting some
 // of the common calls into functions, the call site ended up actually making this whole process ~4-5% slower
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::ParseFormatString(std::back_insert_iterator<T>&& Iter, std::string_view sv) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::back_insert_iterator<T>&& Iter, std::string_view sv) {
 	if( !std::is_constant_evaluated() ) {
-			std::memset(buffer.data(), 0, SERENITY_ARG_BUFFER_SIZE);
+			std::memset(buffer.data(), 0, AF_ARG_BUFFER_SIZE);
 	} else {
 			std::fill(buffer.begin(), buffer.begin() + valueSize, '\0');
 		}
@@ -776,9 +770,9 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Parse
 // As cluttered as this is, I kind of have to leave it like it is at the moment. When decluttering and abstracting some
 // of the common calls into functions, the call site ended up actually making this whole process ~4-5% slower
 template<typename T>
-constexpr void serenity::arg_formatter::ArgFormatter::ParseFormatString(std::back_insert_iterator<T>&& Iter, const std::locale& loc, std::string_view sv) {
+constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::back_insert_iterator<T>&& Iter, const std::locale& loc, std::string_view sv) {
 	if( !std::is_constant_evaluated() ) {
-			std::memset(buffer.data(), 0, SERENITY_ARG_BUFFER_SIZE);
+			std::memset(buffer.data(), 0, AF_ARG_BUFFER_SIZE);
 	} else {
 			std::fill(buffer.begin(), buffer.begin() + valueSize, '\0');
 		}
@@ -906,7 +900,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::ParseFormatString(std::bac
 		}
 }
 
-constexpr bool serenity::arg_formatter::ArgFormatter::FindBrackets(std::string_view sv) {
+constexpr bool formatter::arg_formatter::ArgFormatter::FindBrackets(std::string_view sv) {
 	const auto svSize { sv.size() };
 	if( svSize < 3 ) return false;
 	auto& begin { bracketResults.beginPos };
@@ -936,7 +930,7 @@ constexpr bool serenity::arg_formatter::ArgFormatter::FindBrackets(std::string_v
 		}
 }
 
-constexpr bool serenity::arg_formatter::ArgFormatter::VerifyPositionalField(std::string_view sv, size_t& start, unsigned char& positionValue) {
+constexpr bool formatter::arg_formatter::ArgFormatter::VerifyPositionalField(std::string_view sv, size_t& start, unsigned char& positionValue) {
 	if( m_indexMode == IndexMode::automatic ) {
 			// we're in automatic mode
 			if( const auto& ch { sv[ start ] }; IsDigit(ch) ) {
@@ -1002,7 +996,7 @@ constexpr bool serenity::arg_formatter::ArgFormatter::VerifyPositionalField(std:
 	errHandle.ReportError(ErrorType::none);
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::OnAlignLeft(const char& ch, size_t& pos) {
+constexpr void formatter::arg_formatter::ArgFormatter::OnAlignLeft(const char& ch, size_t& pos) {
 	specValues.align = Alignment::AlignLeft;
 	++pos;
 	if( ch == ':' ) {
@@ -1013,7 +1007,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::OnAlignLeft(const char& ch
 			errHandle.ReportError(ErrorType::invalid_fill_character);
 		}
 }
-constexpr void serenity::arg_formatter::ArgFormatter::OnAlignRight(const char& ch, size_t& pos) {
+constexpr void formatter::arg_formatter::ArgFormatter::OnAlignRight(const char& ch, size_t& pos) {
 	specValues.align = Alignment::AlignRight;
 	++pos;
 	if( ch == ':' ) {
@@ -1024,7 +1018,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::OnAlignRight(const char& c
 			errHandle.ReportError(ErrorType::invalid_fill_character);
 		}
 }
-constexpr void serenity::arg_formatter::ArgFormatter::OnAlignCenter(const char& ch, size_t& pos) {
+constexpr void formatter::arg_formatter::ArgFormatter::OnAlignCenter(const char& ch, size_t& pos) {
 	specValues.align = Alignment::AlignCenter;
 	++pos;
 	if( ch == ':' ) {
@@ -1035,7 +1029,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::OnAlignCenter(const char& 
 			errHandle.ReportError(ErrorType::invalid_fill_character);
 		}
 }
-constexpr void serenity::arg_formatter::ArgFormatter::OnAlignDefault(const SpecType& argType, size_t& pos) {
+constexpr void formatter::arg_formatter::ArgFormatter::OnAlignDefault(const SpecType& argType, size_t& pos) {
 	using enum msg_details::SpecType;
 	--pos;
 	switch( argType ) {
@@ -1052,7 +1046,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::OnAlignDefault(const SpecT
 	specValues.fillCharacter = ' ';
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::VerifyFillAlignField(std::string_view sv, size_t& currentPos, const msg_details::SpecType& argType) {
+constexpr void formatter::arg_formatter::ArgFormatter::VerifyFillAlignField(std::string_view sv, size_t& currentPos, const msg_details::SpecType& argType) {
 	const auto& ch { sv[ currentPos ] };
 	// handle padding with and without argument to pad
 	/*
@@ -1078,7 +1072,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::VerifyFillAlignField(std::
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::VerifyAltField(std::string_view sv, const msg_details::SpecType& argType) {
+constexpr void formatter::arg_formatter::ArgFormatter::VerifyAltField(std::string_view sv, const msg_details::SpecType& argType) {
 	using enum msg_details::SpecType;
 	switch( argType ) {
 			case IntType: [[fallthrough]];
@@ -1094,7 +1088,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::VerifyAltField(std::string
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::VerifyWidthField(std::string_view sv, size_t& currentPosition) {
+constexpr void formatter::arg_formatter::ArgFormatter::VerifyWidthField(std::string_view sv, size_t& currentPosition) {
 	if( const auto& ch { sv[ currentPosition ] }; IsDigit(ch) ) {
 			auto svData { sv.data() };
 			currentPosition += se_from_chars(svData + currentPosition, svData + sv.size(), specValues.alignmentPadding);
@@ -1108,7 +1102,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::VerifyWidthField(std::stri
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::VerifyPrecisionField(std::string_view sv, size_t& currentPosition, const msg_details::SpecType& argType) {
+constexpr void formatter::arg_formatter::ArgFormatter::VerifyPrecisionField(std::string_view sv, size_t& currentPosition, const msg_details::SpecType& argType) {
 	using enum msg_details::SpecType;
 	switch( argType ) {
 			case StringType: [[fallthrough]];
@@ -1133,7 +1127,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::VerifyPrecisionField(std::
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::VerifyLocaleField(std::string_view sv, size_t& currentPosition, const msg_details::SpecType& argType) {
+constexpr void formatter::arg_formatter::ArgFormatter::VerifyLocaleField(std::string_view sv, size_t& currentPosition, const msg_details::SpecType& argType) {
 	using SpecType = msg_details::SpecType;
 	++currentPosition;
 	switch( argType ) {
@@ -1147,7 +1141,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::VerifyLocaleField(std::str
 		}
 }
 
-constexpr bool serenity::arg_formatter::ArgFormatter::IsSimpleSubstitution(const msg_details::SpecType& argType, const int& prec) {
+constexpr bool formatter::arg_formatter::ArgFormatter::IsSimpleSubstitution(const msg_details::SpecType& argType, const int& prec) {
 	using enum SpecType;
 	switch( argType ) {
 			case StringType: [[fallthrough]];
@@ -1169,7 +1163,7 @@ constexpr bool serenity::arg_formatter::ArgFormatter::IsSimpleSubstitution(const
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::OnValidTypeSpec(const SpecType& type, const char& ch) {
+constexpr void formatter::arg_formatter::ArgFormatter::OnValidTypeSpec(const SpecType& type, const char& ch) {
 	using namespace std::literals::string_view_literals;
 	using enum msg_details::SpecType;
 	specValues.typeSpec = ch;
@@ -1192,7 +1186,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::OnValidTypeSpec(const Spec
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::OnInvalidTypeSpec(const SpecType& type) {
+constexpr void formatter::arg_formatter::ArgFormatter::OnInvalidTypeSpec(const SpecType& type) {
 	using enum msg_details::SpecType;
 	switch( type ) {
 			case IntType: [[fallthrough]];
@@ -1215,7 +1209,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::OnInvalidTypeSpec(const Sp
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::HandlePotentialTypeField(const char& ch, const msg_details::SpecType& argType) {
+constexpr void formatter::arg_formatter::ArgFormatter::HandlePotentialTypeField(const char& ch, const msg_details::SpecType& argType) {
 	switch( ch ) {
 			case 'a': [[fallthrough]];
 			case 'A': [[fallthrough]];
@@ -1238,76 +1232,76 @@ constexpr void serenity::arg_formatter::ArgFormatter::HandlePotentialTypeField(c
 		}
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleString(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleString(T&& container) {
 	std::string_view sv { std::move(argStorage.string_state(specValues.argPosition)) };
 	FlushBuffer(sv, sv.size(), std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleCString(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleCString(T&& container) {
 	std::string_view sv { std::move(argStorage.c_string_state(specValues.argPosition)) };
 	FlushBuffer(sv, sv.size(), std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleStringView(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleStringView(T&& container) {
 	std::string_view sv { std::move(argStorage.string_view_state(specValues.argPosition)) };
 	FlushBuffer(sv, sv.size(), std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleInt(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleInt(T&& container) {
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
 	FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.int_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleUInt(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleUInt(T&& container) {
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
 	FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.uint_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleLongLong(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleLongLong(T&& container) {
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
 	FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.long_long_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleULongLong(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleULongLong(T&& container) {
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
 	FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.u_long_long_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleBool(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleBool(T&& container) {
 	std::string_view sv { argStorage.bool_state(specValues.argPosition) ? "true" : "false" };
 	FlushBuffer(sv, sv.size(), std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleFloat(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleFloat(T&& container) {
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
 	FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.float_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleDouble(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleDouble(T&& container) {
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
 	FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.double_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleLongDouble(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleLongDouble(T&& container) {
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
 	FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.long_double_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleConstVoidPtr(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleConstVoidPtr(T&& container) {
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
@@ -1318,7 +1312,7 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Write
 	            std::forward<T>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleVoidPtr(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleVoidPtr(T&& container) {
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
@@ -1330,24 +1324,24 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Write
 
 template<typename T>
 requires std::is_integral_v<std::remove_cvref_t<T>>
-constexpr void serenity::arg_formatter::ArgFormatter::TwoDigitToBuff(T val) {
+constexpr void formatter::arg_formatter::ArgFormatter::TwoDigitToBuff(T val) {
 	buffer[ valueSize++ ] = val > 9 ? static_cast<char>((val / 10) + NumericalAsciiOffset) : '0';
 	buffer[ valueSize++ ] = static_cast<char>((val % 10) + NumericalAsciiOffset);
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::Format24HourTime(int hour, int min, int sec, int precision) {
+constexpr void formatter::arg_formatter::ArgFormatter::Format24HourTime(int hour, int min, int sec, int precision) {
 	Format24HM(hour, min);
 	buffer[ valueSize++ ] = ':';
 	TwoDigitToBuff(sec);
 	if( precision != 0 ) FormatSubseconds(precision);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Write24HourTime(T&& container, const int& hour, const int& min, const int& sec) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Write24HourTime(T&& container, const int& hour, const int& min, const int& sec) {
 	Format24HourTime(hour, min, sec);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatShortMonth(int mon) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatShortMonth(int mon) {
 	auto month { short_months[ mon ] };
 	int pos { 0 };
 	for( ;; ) {
@@ -1356,12 +1350,12 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatShortMonth(int mon) 
 		}
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteShortMonth(T&& container, const int& mon) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteShortMonth(T&& container, const int& mon) {
 	FormatShortMonth(mon);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatShortWeekday(int wkday) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatShortWeekday(int wkday) {
 	auto wkDay { short_weekdays[ wkday ] };
 	int pos { 0 };
 	for( ;; ) {
@@ -1370,12 +1364,12 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatShortWeekday(int wkd
 		}
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteShortWeekday(T&& container, const int& wkday) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteShortWeekday(T&& container, const int& wkday) {
 	FormatShortWeekday(wkday);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatTimeDate(const std::tm& time) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatTimeDate(const std::tm& time) {
 	FormatShortWeekday(time.tm_wday);
 	buffer[ valueSize++ ] = ' ';
 	FormatShortMonth(time.tm_mon);
@@ -1387,44 +1381,44 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatTimeDate(const std::
 	FormatLongYear(time.tm_year);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteTimeDate(T&& container, const std::tm& time) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteTimeDate(T&& container, const std::tm& time) {
 	FormatTimeDate(time);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteShortYear(T&& container, const int& year) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteShortYear(T&& container, const int& year) {
 	FormatShortYear(year);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatShortYear(int year) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatShortYear(int year) {
 	year %= 100;
 	buffer[ valueSize++ ] = static_cast<char>((year / 10) + NumericalAsciiOffset);
 	buffer[ valueSize++ ] = static_cast<char>((year % 10) + NumericalAsciiOffset);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WritePaddedDay(T&& container, const int& day) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WritePaddedDay(T&& container, const int& day) {
 	TwoDigitToBuff(day);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSpacePaddedDay(T&& container, const int& day) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSpacePaddedDay(T&& container, const int& day) {
 	FormatSpacePaddedDay(day);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatSpacePaddedDay(int day) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatSpacePaddedDay(int day) {
 	buffer[ valueSize++ ] = day > 9 ? static_cast<char>((day / 10) + NumericalAsciiOffset) : ' ';
 	buffer[ valueSize++ ] = static_cast<char>((day % 10) + NumericalAsciiOffset);
 }
 
 template<typename T>
-constexpr void serenity::arg_formatter::ArgFormatter::WriteShortIsoWeekYear(T&& container, const int& year, const int& yrday, const int& wkday) {
+constexpr void formatter::arg_formatter::ArgFormatter::WriteShortIsoWeekYear(T&& container, const int& year, const int& yrday, const int& wkday) {
 	FormatShortIsoWeekYear(year, yrday, wkday);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatShortIsoWeekYear(int year, int yrday, int wkday) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatShortIsoWeekYear(int year, int yrday, int wkday) {
 	year += 1900;
 	auto w { (10 + yrday - wkday) / 7 };
 	if( w < 1 ) return FormatShortYear(year - 1901);    // decrement year
@@ -1434,24 +1428,24 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatShortIsoWeekYear(int
 	return FormatShortYear(year - 1900);                    // Use current year
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteDayOfYear(T&& container, const int& day) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteDayOfYear(T&& container, const int& day) {
 	FormatDayOfYear(day);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatDayOfYear(int day) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatDayOfYear(int day) {
 	++day;    // increment due to the inclusion of 0 -> day  0 is day 1 of year
 	buffer[ valueSize++ ] = day > 99 ? static_cast<char>((day / 100) + NumericalAsciiOffset) : '0';
 	buffer[ valueSize++ ] = day > 9 ? static_cast<char>(day > 99 ? ((day / 10) % 10) + NumericalAsciiOffset : ((day / 10) + NumericalAsciiOffset)) : '0';
 	buffer[ valueSize++ ] = static_cast<char>((day % 10) + NumericalAsciiOffset);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WritePaddedMonth(T&& container, const int& month) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WritePaddedMonth(T&& container, const int& month) {
 	TwoDigitToBuff(month + 1);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteLiteral(T&& container, unsigned char lit) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteLiteral(T&& container, unsigned char lit) {
 	if constexpr( std::is_same_v<type<T>, std::string> ) {
 			container += lit;
 	} else if constexpr( std::is_same_v<type<T>, std::vector<typename type<T>::value_type>> ) {
@@ -1461,45 +1455,45 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Write
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatLiteral(unsigned char lit) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatLiteral(unsigned char lit) {
 	buffer[ valueSize++ ] = lit;
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteAMPM(T&& container, const int& hour) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteAMPM(T&& container, const int& hour) {
 	FormatAMPM(hour);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatAMPM(int hour) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatAMPM(int hour) {
 	buffer[ valueSize++ ] = hour >= 12 ? 'P' : 'A';
 	buffer[ valueSize++ ] = 'M';
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Write12HourTime(T&& container, const int& hour, const int& min, const int& sec) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Write12HourTime(T&& container, const int& hour, const int& min, const int& sec) {
 	Format24HourTime(hour > 12 ? hour - 12 : hour, min, sec);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::Format12HourTime(int hour, int min, int sec, int precision) {
+constexpr void formatter::arg_formatter::ArgFormatter::Format12HourTime(int hour, int min, int sec, int precision) {
 	Format24HourTime(hour > 12 ? hour - 12 : hour, min, sec, precision);
 	FormatAMPM(hour);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteWeekdayDec(T&& container, const int& wkday) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteWeekdayDec(T&& container, const int& wkday) {
 	FormatWeekdayDec(wkday);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatWeekdayDec(int wkday) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatWeekdayDec(int wkday) {
 	buffer[ valueSize++ ] = static_cast<char>(wkday += NumericalAsciiOffset);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteMMDDYY(T&& container, const int& month, const int& day, const int& year) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteMMDDYY(T&& container, const int& month, const int& day, const int& year) {
 	FormatMMDDYY(month, day, year);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatMMDDYY(int month, int day, int year) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatMMDDYY(int month, int day, int year) {
 	year %= 100;
 	++month;
 	FormatShortMonth(month);
@@ -1509,26 +1503,26 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatMMDDYY(int month, in
 	FormatShortYear(year);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteIsoWeekDec(T&& container, const int& wkday) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteIsoWeekDec(T&& container, const int& wkday) {
 	FormatIsoWeekDec(wkday);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatIsoWeekDec(int wkday) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatIsoWeekDec(int wkday) {
 	buffer[ valueSize++ ] = static_cast<char>((wkday != 0 ? wkday : 7) + NumericalAsciiOffset);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteUtcOffset(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteUtcOffset(T&& container) {
 	FormatUtcOffset();
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteLongWeekday(T&& container, const int& wkday) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteLongWeekday(T&& container, const int& wkday) {
 	FormatLongWeekday(wkday);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatLongWeekday(int wkday) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatLongWeekday(int wkday) {
 	std::string_view weekday { long_weekdays[ wkday ] };
 	int pos { 0 };
 	auto size { weekday.size() };
@@ -1538,12 +1532,12 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatLongWeekday(int wkda
 		}
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteLongMonth(T&& container, const int& mon) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteLongMonth(T&& container, const int& mon) {
 	FormatLongMonth(mon);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatLongMonth(int mon) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatLongMonth(int mon) {
 	std::string_view month { long_months[ mon ] };
 	int pos { 0 };
 	auto size { month.size() };
@@ -1553,12 +1547,12 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatLongMonth(int mon) {
 		}
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteYYYYMMDD(T&& container, const int& year, const int& mon, const int& day) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteYYYYMMDD(T&& container, const int& year, const int& mon, const int& day) {
 	FormatYYYYMMDD(year, mon, day);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatYYYYMMDD(int year, int mon, int day) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatYYYYMMDD(int year, int mon, int day) {
 	year += 1900;
 	++mon;
 	FormatLongYear(year);
@@ -1567,12 +1561,12 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatYYYYMMDD(int year, i
 	buffer[ valueSize++ ] = '-';
 	TwoDigitToBuff(day);
 }
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteLongYear(T&& container, int year) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteLongYear(T&& container, int year) {
 	FormatLongYear(year);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatLongYear(int year) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatLongYear(int year) {
 	year += 1900;
 	buffer[ valueSize++ ] = static_cast<char>(year / 1000 + NumericalAsciiOffset);
 	buffer[ valueSize++ ] = static_cast<char>((year / 100) % 10 + NumericalAsciiOffset);
@@ -1580,12 +1574,12 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatLongYear(int year) {
 	buffer[ valueSize++ ] = static_cast<char>((year % 100) % 10 + NumericalAsciiOffset);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteLongIsoWeekYear(T&& container, const int& year, const int& yrday, const int& wkday) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteLongIsoWeekYear(T&& container, const int& year, const int& yrday, const int& wkday) {
 	FormatLongIsoWeekYear(year, yrday, wkday);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatLongIsoWeekYear(int year, int yrday, int wkday) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatLongIsoWeekYear(int year, int yrday, int wkday) {
 	year += 1900;
 	auto w { (10 + yrday - wkday) / 7 };
 	if( w < 1 ) return FormatLongYear(year - 1901);    // decrement year
@@ -1595,75 +1589,75 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatLongIsoWeekYear(int 
 	return FormatLongYear(year - 1900);                    // Use current year
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteTruncatedYear(T&& container, const int& year) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteTruncatedYear(T&& container, const int& year) {
 	FormatTruncatedYear(year);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatTruncatedYear(int year) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatTruncatedYear(int year) {
 	(year += 1900) /= 100;
 	buffer[ valueSize++ ] = static_cast<char>((year / 10) + NumericalAsciiOffset);
 	buffer[ valueSize++ ] = static_cast<char>((year % 10) + NumericalAsciiOffset);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Write24Hour(T&& container, const int& hour) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Write24Hour(T&& container, const int& hour) {
 	TwoDigitToBuff(hour);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Write12Hour(T&& container, const int& hour) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Write12Hour(T&& container, const int& hour) {
 	TwoDigitToBuff(hour > 12 ? hour - 12 : hour);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteMinute(T&& container, const int& min) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteMinute(T&& container, const int& min) {
 	TwoDigitToBuff(min);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Write24HM(T&& container, const int& hour, const int& min) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Write24HM(T&& container, const int& hour, const int& min) {
 	Format24HM(hour, min);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::Format24HM(int hour, int min) {
+constexpr void formatter::arg_formatter::ArgFormatter::Format24HM(int hour, int min) {
 	TwoDigitToBuff(hour);
 	buffer[ valueSize++ ] = ':';
 	TwoDigitToBuff(min);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSecond(T&& container, const int& sec) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSecond(T&& container, const int& sec) {
 	TwoDigitToBuff(sec);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteTime(T&& container, const int& hour, const int& min, const int& sec) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteTime(T&& container, const int& hour, const int& min, const int& sec) {
 	Format24HourTime(hour, min, sec);
 	(hour, min, sec);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteTZName(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteTZName(T&& container) {
 	FormatTZName();
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteWeek(T&& container, const int& yrday, const int& wkday) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteWeek(T&& container, const int& yrday, const int& wkday) {
 	TwoDigitToBuff((10 + yrday - wkday) / 7);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteIsoWeek(T&& container, const int& yrday, const int& wkday) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteIsoWeek(T&& container, const int& yrday, const int& wkday) {
 	TwoDigitToBuff((yrday + 7 - (wkday == 0 ? 6 : wkday - 1)) / 7);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteIsoWeekNumber(T&& container, const int& year, const int& yrday, const int& wkday) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteIsoWeekNumber(T&& container, const int& year, const int& yrday, const int& wkday) {
 	FormatIsoWeekNumber(year, yrday, wkday);
 	WriteBufferToContainer(std::forward<FwdRef<T>>(container));
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatIsoWeekNumber(int year, int yrday, int wkday) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatIsoWeekNumber(int year, int yrday, int wkday) {
 	auto w = (10 + yrday - wkday) / 7;
 	if( w < 1 ) {
 			--year;
@@ -1681,7 +1675,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatIsoWeekNumber(int ye
 	TwoDigitToBuff(w);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleCTime(T&& container) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleCTime(T&& container) {
 	const auto& tm { argStorage.c_time_state(specValues.argPosition) };
 	switch( timeSpec.timeSpecContainer[ 0 ] ) {
 			case 'a': WriteShortWeekday(std::forward<FwdRef<T>>(container), tm.tm_wday); return;
@@ -1725,7 +1719,7 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Write
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatCTime(const std::tm& time, const int& precision, int startPos, int endPos) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatCTime(const std::tm& time, const int& precision, int startPos, int endPos) {
 	for( ;; ) {
 			switch( timeSpec.timeSpecContainer[ startPos ] ) {
 					case 'a': FormatShortWeekday(time.tm_wday); break;
@@ -1771,7 +1765,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatCTime(const std::tm&
 		}
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteSimpleValue(T&& container, const msg_details::SpecType& argType) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleValue(T&& container, const msg_details::SpecType& argType) {
 	using enum msg_details::SpecType;
 	switch( argType ) {
 			case StringType: WriteSimpleString(std::forward<FwdRef<T>>(container)); return;
@@ -1792,23 +1786,23 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Write
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatCharType(char& value) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatCharType(char& value) {
 	specValues.typeSpec != '\0' && specValues.typeSpec != 'c' ? FormatIntegerType(static_cast<int>(value)) : WriteChar(value);
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::WriteBool(const bool& value) {
+constexpr void formatter::arg_formatter::ArgFormatter::WriteBool(const bool& value) {
 	using namespace std::string_view_literals;
 	auto sv { value ? "true"sv : "false"sv };
 	std::copy(sv.data(), sv.data() + sv.size(), buffer.begin());
 	valueSize = sv.size();
 }
-constexpr void serenity::arg_formatter::ArgFormatter::FormatBoolType(bool& value) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatBoolType(bool& value) {
 	specValues.typeSpec != '\0' && specValues.typeSpec != 's' ? FormatIntegerType(static_cast<unsigned char>(value)) : WriteBool(value);
 }
 
 template<typename T>
 requires std::is_pointer_v<std::remove_cvref_t<T>>
-constexpr void serenity::arg_formatter::ArgFormatter::FormatPointerType(T&& value, const msg_details::SpecType& type) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatPointerType(T&& value, const msg_details::SpecType& type) {
 	using enum msg_details::SpecType;
 	constexpr std::string_view sv { "0x" };
 	switch( type ) {
@@ -1830,7 +1824,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatPointerType(T&& valu
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::FormatArgument(const int& precision, const int& totalWidth, const msg_details::SpecType& type) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatArgument(const int& precision, const int& totalWidth, const msg_details::SpecType& type) {
 	using enum msg_details::SpecType;
 	switch( type ) {
 			case IntType: FormatIntegerType(argStorage.int_state(specValues.argPosition)); return;
@@ -1848,7 +1842,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::FormatArgument(const int& 
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::BufferToUpper(char* begin, const char* end) {
+constexpr void formatter::arg_formatter::ArgFormatter::BufferToUpper(char* begin, const char* end) {
 	// Bypassing a check on every char and only matching these cases is slightly faster and uses considerably less CPU cycles.
 	// Since this is being used explicitly to convert hex values and the case 'p' (for floating point cases), these are the only
 	// values that are of any concern to check here.
@@ -1868,7 +1862,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::BufferToUpper(char* begin,
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::SetFloatingFormat(std::chars_format& format, int& precision, bool& isUpper) {
+constexpr void formatter::arg_formatter::ArgFormatter::SetFloatingFormat(std::chars_format& format, int& precision, bool& isUpper) {
 	switch( specValues.typeSpec ) {
 			case '\0':
 				// default behaviors
@@ -1922,7 +1916,7 @@ constexpr void serenity::arg_formatter::ArgFormatter::SetFloatingFormat(std::cha
 
 template<typename T>
 requires std::is_arithmetic_v<std::remove_cvref_t<T>>
-constexpr void serenity::arg_formatter::ArgFormatter::WriteSign(T&& value, int& pos) {
+constexpr void formatter::arg_formatter::ArgFormatter::WriteSign(T&& value, int& pos) {
 	switch( specValues.signType == Sign::Space ? value < 0 ? Sign::Minus : Sign::Space : specValues.signType ) {
 			case Sign::Space: buffer[ pos++ ] = ' '; return;
 			case Sign::Plus: buffer[ pos++ ] = '+'; return;
@@ -1931,12 +1925,12 @@ constexpr void serenity::arg_formatter::ArgFormatter::WriteSign(T&& value, int& 
 		}
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::WriteChar(const char& value) {
+constexpr void formatter::arg_formatter::ArgFormatter::WriteChar(const char& value) {
 	buffer[ 0 ] = value;
 	valueSize   = 1;
 }
 
-constexpr void serenity::arg_formatter::ArgFormatter::SetIntegralFormat(int& base, bool& isUpper) {
+constexpr void formatter::arg_formatter::ArgFormatter::SetIntegralFormat(int& base, bool& isUpper) {
 	// spec 'c' is handled in FormatArgument() By direct write to buffer
 	switch( specValues.typeSpec ) {
 			case '\0': base = 10; return;
@@ -1957,39 +1951,39 @@ constexpr void serenity::arg_formatter::ArgFormatter::SetIntegralFormat(int& bas
 
 template<typename T>
 requires std::is_floating_point_v<std::remove_cvref_t<T>>
-constexpr void serenity::arg_formatter::ArgFormatter::FormatFloatType(T&& value, int precision) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatFloatType(T&& value, int precision) {
 	int pos { 0 };
 	bool isUpper { false };
 	auto data { buffer.data() };
 	std::chars_format format {};
-	!std::is_constant_evaluated() ? static_cast<void>(std::memset(data, 0, SERENITY_ARG_BUFFER_SIZE)) : std::fill(buffer.begin(), buffer.end(), 0);
+	!std::is_constant_evaluated() ? static_cast<void>(std::memset(data, 0, AF_ARG_BUFFER_SIZE)) : std::fill(buffer.begin(), buffer.end(), 0);
 	if( specValues.signType != Sign::Empty ) WriteSign(std::forward<T>(value), pos);
 	SetFloatingFormat(format, precision, isUpper);
-	auto end { precision != 0 ? std::to_chars(data + pos, data + SERENITY_ARG_BUFFER_SIZE, value, format, precision).ptr
-		                      : std::to_chars(data + pos, data + SERENITY_ARG_BUFFER_SIZE, value, format).ptr };
+	auto end { precision != 0 ? std::to_chars(data + pos, data + AF_ARG_BUFFER_SIZE, value, format, precision).ptr
+		                      : std::to_chars(data + pos, data + AF_ARG_BUFFER_SIZE, value, format).ptr };
 	valueSize = end - data;
 	if( isUpper ) BufferToUpper(data, end);
 }
 
 template<typename T>
 requires std::is_integral_v<std::remove_cvref_t<T>>
-constexpr void serenity::arg_formatter::ArgFormatter::FormatIntegerType(T&& value) {
+constexpr void formatter::arg_formatter::ArgFormatter::FormatIntegerType(T&& value) {
 	int pos { 0 }, base { 10 };
 	bool isUpper { false };
 	auto data { buffer.data() };
-	!std::is_constant_evaluated() ? static_cast<void>(std::memset(data, 0, SERENITY_ARG_BUFFER_SIZE)) : std::fill(buffer.begin(), buffer.end(), 0);
+	!std::is_constant_evaluated() ? static_cast<void>(std::memset(data, 0, AF_ARG_BUFFER_SIZE)) : std::fill(buffer.begin(), buffer.end(), 0);
 	if( specValues.signType != Sign::Empty ) WriteSign(std::forward<T>(value), pos);
 	if( specValues.preAltForm.size() != 0 ) {
 			std::memcpy(data + pos, specValues.preAltForm.data(), specValues.preAltForm.size());
 			pos += static_cast<int>(specValues.preAltForm.size());    // safe to downcast as it will only ever be positive and max val of 2
 	}
 	SetIntegralFormat(base, isUpper);
-	auto end { std::to_chars(data + pos, data + SERENITY_ARG_BUFFER_SIZE, value, base).ptr };
+	auto end { std::to_chars(data + pos, data + AF_ARG_BUFFER_SIZE, value, base).ptr };
 	valueSize = end - data;
 	if( isUpper ) BufferToUpper(data, end);
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::FormatStringType(T&& container, std::string_view val, const int& precision) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::FormatStringType(T&& container, std::string_view val, const int& precision) {
 	int size { static_cast<int>(val.size()) };
 	using CharType = typename type<T>::value_type;
 	if constexpr( std::is_same_v<CharType, char> ) {
@@ -2010,7 +2004,7 @@ template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::Forma
 		}
 }
 
-template<typename T> constexpr void serenity::arg_formatter::ArgFormatter::WriteFormattedString(T&& container, const SpecType& type, const int& precision) {
+template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteFormattedString(T&& container, const SpecType& type, const int& precision) {
 	using enum msg_details::SpecType;
 	switch( type ) {
 			case StringViewType: return FormatStringType(std::forward<FwdRef<T>>(container), argStorage.string_view_state(specValues.argPosition), precision);

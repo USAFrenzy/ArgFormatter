@@ -1,11 +1,11 @@
 #pragma once
 
-#include <serenity/MessageDetails/ArgContainer.h>
-#include <serenity/Utilities/UtfHelper.h>
+#include <ArgContainer.h>
+#include <UtfHelper.h>
 
-namespace details = serenity::msg_details;
+namespace details = formatter::msg_details;
 
-constexpr std::array<serenity::VType, details::MAX_ARG_COUNT>& details::ArgContainer::ArgStorage() {
+constexpr std::array<formatter::VType, details::MAX_ARG_COUNT>& details::ArgContainer::ArgStorage() {
 	return argContainer;
 }
 
@@ -213,16 +213,16 @@ constexpr void* details::ArgContainer::void_ptr_state(size_t index) {
 	return *std::get_if<14>(&argContainer[ index ]);
 }
 
-constexpr std::tm& serenity::msg_details::ArgContainer::c_time_state(size_t index) {
+constexpr std::tm& formatter::msg_details::ArgContainer::c_time_state(size_t index) {
 	SE_ASSERT(index <= MAX_ARG_INDEX, "Error Retrieving Stored Value - Index Is Out Of Bounds");
 	SE_ASSERT(std::holds_alternative<std::tm>(argContainer[ index ]), "Error Retrieving std::tm: Variant At Index Provided Doesn't Contain This Type.");
 	return *std::get_if<15>(&argContainer[ index ]);
 }
 
-constexpr serenity::CustomValue& serenity::msg_details::ArgContainer::custom_state(size_t index) {
+constexpr formatter::CustomValue& formatter::msg_details::ArgContainer::custom_state(size_t index) {
 	SE_ASSERT(index <= MAX_ARG_INDEX, "Error Retrieving Stored Value - Index Is Out Of Bounds");
 	// clang-format off
-	SE_ASSERT(std::holds_alternative<serenity::CustomValue>(argContainer[ index ]),
+	SE_ASSERT(std::holds_alternative<formatter::CustomValue>(argContainer[ index ]),
 		"Error Retrieving custom value type: Variant At Index Provided Doesn't Contain This Type.");
 	// clang-format on
 	return *std::get_if<16>(&argContainer[ index ]);

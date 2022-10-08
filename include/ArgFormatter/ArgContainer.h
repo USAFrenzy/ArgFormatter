@@ -6,22 +6,21 @@
 #include <variant>
 #include <vector>
 
-// Reimplement SE_ASSERT here to avoid cyclic dependancy on includes from Common.h
 #ifdef _DEBUG
-	#ifndef SE_ASSERT
-		#define SE_ASSERT(condition, message)                                                                                                                       \
+	#ifndef AF_ASSERT
+		#define AF_ASSERT(condition, message)                                                                                                                       \
 			if( !(condition) ) {                                                                                                                                    \
 					fprintf(stderr, "Assertion Failed: (%s) |File: %s | Line: %i\nMessage:%s\n", #condition, __FILE__, __LINE__, message);                          \
 					abort();                                                                                                                                        \
 			}
 	#endif
 #else
-	#ifndef SE_ASSERT
-		#define SE_ASSERT(condition, message) void(0)
+	#ifndef AF_ASSERT
+		#define AF_ASSERT(condition, message) void(0)
 	#endif
 #endif
 
-namespace serenity {
+namespace formatter {
 
 	// convenience typedefs
 	template<typename T> using type        = std::remove_cvref_t<T>;
@@ -129,9 +128,9 @@ namespace serenity {
 	};
 	template<typename T> inline constexpr bool is_formattable_v = is_formattable<T>::value;
 
-}    // namespace serenity
+}    // namespace formatter
 
-namespace serenity::msg_details {
+namespace formatter::msg_details {
 
 	enum class SpecType
 	{
@@ -233,10 +232,10 @@ namespace serenity::msg_details {
 				return std::forward<SpecType>(CTimeType);
 		} else {
 				static_assert(is_formattable_v<type<T>>, "A Template Specialization Must Exist For A Custom Type Argument.\n\t"
-				                                         "For Serenity, This Can Be Done By Specializing The CustomFormatter Template For Your Type And "
-				                                         "Implementing The Parse() And Format() Functions.");
+				                                         "For ArgFormatter, This Can Be Done By Specializing The CustomFormatter "
+														 "Template For Your Type And Implementing The Parse() And Format() Functions.");
 				return std::forward<SpecType>(CustomType);
 			}
 	}
-#include <serenity/MessageDetails/ArgContainerImpl.h>
-}    // namespace serenity::msg_details
+#include <ArgContainerImpl.h>
+}    // namespace formatter::msg_details

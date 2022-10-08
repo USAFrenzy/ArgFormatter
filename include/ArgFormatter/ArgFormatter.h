@@ -1,6 +1,6 @@
 #pragma once
 
-#include <serenity/MessageDetails/ArgContainer.h>
+#include <ArgContainer.h>
 
 #include <charconv>
 #include <chrono>
@@ -8,8 +8,8 @@
 #include <locale>
 #include <stdexcept>
 
-using namespace serenity::msg_details;
-namespace serenity {
+using namespace formatter::msg_details;
+namespace formatter {
 
 	enum class ErrorType
 	{
@@ -74,9 +74,9 @@ namespace serenity {
 		};
 		[[noreturn]] constexpr void ReportError(ErrorType err);
 	};
-}    // namespace serenity
+}    // namespace formatter
 
-namespace serenity::globals {
+namespace formatter::globals {
 	static auto& TimeZoneInstance() {
 		static const auto& timeZoneData { std::chrono::get_tzdb() };
 		return timeZoneData;
@@ -92,11 +92,11 @@ namespace serenity::globals {
 	static auto& UtcOffset() {
 		return TZInfo().offset;
 	}
-}    // namespace serenity::globals
+}    // namespace formatter::globals
 
-namespace serenity::arg_formatter {
+namespace formatter::arg_formatter {
 
-	constexpr size_t SERENITY_ARG_BUFFER_SIZE { 66 };
+	constexpr size_t AF_ARG_BUFFER_SIZE { 66 };
 	// defualt locale used for when no locale is provided, yet a locale flag is present when formatting
 	static std::locale default_locale { std::locale("") };
 
@@ -403,18 +403,18 @@ namespace serenity::arg_formatter {
 		BracketSearchResults bracketResults;
 		SpecFormatting specValues;
 		ArgContainer argStorage;
-		std::array<char, SERENITY_ARG_BUFFER_SIZE> buffer;
+		std::array<char, AF_ARG_BUFFER_SIZE> buffer;
 		size_t valueSize;
 		std::vector<char> fillBuffer;
-		serenity::error_handler errHandle;
+		formatter::error_handler errHandle;
 		TimeSpecs timeSpec {};
 	};
-#include <serenity/MessageDetails/ArgFormatterImpl.h>
-}    // namespace serenity::arg_formatter
+#include <formatter/MessageDetails/ArgFormatterImpl.h>
+}    // namespace formatter::arg_formatter
 
 // These are made static so that when including this file, one can either use and modify the above class or just call the
 // formatting functions directly, like the logger-side of this project where the VFORMAT_TO macros are defined
-namespace serenity {
+namespace formatter {
 	namespace globals {
 		static std::unique_ptr<arg_formatter::ArgFormatter> staticFormatter { std::make_unique<arg_formatter::ArgFormatter>() };
 	}    // namespace globals
@@ -427,20 +427,20 @@ namespace serenity {
 	}
 	template<typename... Args> [[nodiscard]] static std::string format(std::string_view sv, Args&&... args) {
 		std::string tmp;
-		tmp.reserve(serenity::arg_formatter::ReserveCapacity(std::forward<Args>(args)...));
+		tmp.reserve(formatter::arg_formatter::ReserveCapacity(std::forward<Args>(args)...));
 		globals::staticFormatter->se_format_to(std::back_inserter(tmp), sv, std::forward<Args>(args)...);
 		return tmp;
 	}
 	template<typename... Args> [[nodiscard]] static std::string format(const std::locale& locale, std::string_view sv, Args&&... args) {
 		std::string tmp;
-		tmp.reserve(serenity::arg_formatter::ReserveCapacity(std::forward<Args>(args)...));
+		tmp.reserve(formatter::arg_formatter::ReserveCapacity(std::forward<Args>(args)...));
 		globals::staticFormatter->se_format_to(std::back_inserter(tmp), locale, sv, std::forward<Args>(args)...);
 		return tmp;
 	}
 
 	// Now that the runtime errors are organized in a neater fashion, would really love to figure out how libfmt does compile-time checking.
 	// A lot of what is being used to verify things are all runtime-access stuff so I'm assuming achieving this won't be easy at all =/
-	constexpr void serenity::error_handler::ReportError(ErrorType err) {
+	constexpr void formatter::error_handler::ReportError(ErrorType err) {
 		using enum ErrorType;
 		switch( err ) {
 				case missing_bracket: throw format_error(format_error_messages[ 1 ]); break;
@@ -466,4 +466,4 @@ namespace serenity {
 			}
 	}
 
-}    // namespace serenity
+}    // namespace formatter
