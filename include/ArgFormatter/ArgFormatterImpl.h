@@ -1,7 +1,6 @@
 #pragma once
 
-#include <ArgContainer.h>
-#include <ArgFormatter.h>
+#include "ArgFormatter.h"
 
 static constexpr bool IsDigit(const char& ch) {
 	return ((ch >= '0') && (ch <= '9'));

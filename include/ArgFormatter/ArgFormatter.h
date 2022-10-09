@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ArgContainer.h>
+#include "ArgContainer.h"
 
 #include <charconv>
 #include <chrono>
@@ -409,7 +409,7 @@ namespace formatter::arg_formatter {
 		formatter::error_handler errHandle;
 		TimeSpecs timeSpec {};
 	};
-#include <formatter/MessageDetails/ArgFormatterImpl.h>
+#include "ArgFormatterImpl.h"
 }    // namespace formatter::arg_formatter
 
 // These are made static so that when including this file, one can either use and modify the above class or just call the

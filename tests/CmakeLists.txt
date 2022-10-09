@@ -1,0 +1,11 @@
+set(PROJECT_NAME Formatter_Tests)
+
+message("-- Building ${PROJECT_NAME}" )
+
+set(TEST_SOURCE_FILES "tests.cpp")
+
+add_executable(${PROJECT_NAME} ${TEST_SOURCE_FILES})
+
+set(STANDARD 20)
+
+set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD ${STANDARD})
