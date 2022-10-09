@@ -16,7 +16,7 @@ option(
 
 option(
     BUILD_ALL
-    "Build Benchmarking, Testing, Demo, and Sandbox Projects Alongside The Library"
+    "Build Tests and Sandbox Projects Alongside The Library"
     ON
 )
 
