@@ -237,5 +237,5 @@ namespace formatter::msg_details {
 				return std::forward<SpecType>(CustomType);
 			}
 	}
-#include "ArgContainerImpl.h"
 }    // namespace formatter::msg_details
+#include "ArgContainerImpl.h"

@@ -415,22 +415,27 @@ namespace formatter::arg_formatter {
 // These are made static so that when including this file, one can either use and modify the above class or just call the
 // formatting functions directly, like the logger-side of this project where the VFORMAT_TO macros are defined
 namespace formatter {
+
 	namespace globals {
 		static std::unique_ptr<arg_formatter::ArgFormatter> staticFormatter { std::make_unique<arg_formatter::ArgFormatter>() };
 	}    // namespace globals
+
 	template<typename T, typename... Args> static constexpr void format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args) {
 		globals::staticFormatter->se_format_to(std::forward<FwdMoveIter<T>>(Iter), sv, std::forward<Args>(args)...);
 	}
+
 	template<typename T, typename... Args>
 	static constexpr void format_to(std::back_insert_iterator<T>&& Iter, const std::locale& locale, std::string_view sv, Args&&... args) {
 		globals::staticFormatter->se_format_to(std::forward<FwdMoveIter<T>>(Iter), locale, sv, std::forward<Args>(args)...);
 	}
+
 	template<typename... Args> [[nodiscard]] static std::string format(std::string_view sv, Args&&... args) {
 		std::string tmp;
 		tmp.reserve(formatter::arg_formatter::ReserveCapacity(std::forward<Args>(args)...));
 		globals::staticFormatter->se_format_to(std::back_inserter(tmp), sv, std::forward<Args>(args)...);
 		return tmp;
 	}
+
 	template<typename... Args> [[nodiscard]] static std::string format(const std::locale& locale, std::string_view sv, Args&&... args) {
 		std::string tmp;
 		tmp.reserve(formatter::arg_formatter::ReserveCapacity(std::forward<Args>(args)...));
