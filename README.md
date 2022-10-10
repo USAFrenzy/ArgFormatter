@@ -47,8 +47,7 @@ All of the above can be localized for a specific locale as well:
 <br>
 
 How you format arguments here is *exactly* the same as how you format arguments with ```<format>``` and ```fmtlib``` so <br>
-please reference Victor Zverovich's project [fmt](https://github.com/fmtlib/fmt) or the [std::format's](https://en.cppreference.com/w/cpp/utility/format/format) documentation for how to use formatting flags according<br>
-to the formatting grammar used. 
+please reference Victor Zverovich's project [fmt](https://github.com/fmtlib/fmt) or the [std::format's](https://en.cppreference.com/w/cpp/utility/format/format) documentation for how to use formatting flags according to the formatting grammar used. 
 
 ------------------------------------------
 <br>
