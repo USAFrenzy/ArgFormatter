@@ -46,8 +46,11 @@ All of the above can be localized for a specific locale as well:
 
 <br>
 
-How you format arguments here is *exactly* the same as how you format arguments with ```<format>``` and ```fmtlib``` so <br>
-please reference Victor Zverovich's project [fmt](https://github.com/fmtlib/fmt) or the [std::format's](https://en.cppreference.com/w/cpp/utility/format/format) documentation for how to use formatting flags according to the formatting grammar used. 
+<div align="center">
+
+How you format arguments here is *exactly* the same as how you format arguments with ```<format>``` and ```fmtlib``` so please reference Victor Zverovich's project [fmt](https://github.com/fmtlib/fmt) or the [std::format's](https://en.cppreference.com/w/cpp/utility/format/format) documentation for how to use formatting flags according to the formatting grammar used. I can't make an argument for usage of this library over ```fmtlib``` (given this library is the product of massive admiration for that library) without benching it first, but at the very least, if you're on windows using ```<format>``` already and want to squeeze out a lot more performance in regards to formatting, I *CAN* make an argument for using this library instead for the above listed formatting argument types. (Full bench suite coming soon).
+
+</div>
 
 ------------------------------------------
 <br>
