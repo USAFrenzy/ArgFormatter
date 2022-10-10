@@ -29,7 +29,17 @@ This library is able to format:
 - long floats
 - doubles
 - long doubles
+- booleans
 - Any custom type that you've provided a template specialization for with the ```CustomFormatter``` struct.
+
+<br>
+
+All of the above can be localized for a specific locale as well:
+- Time arguments will be localized with the format and textual representation for a specific locale
+  - Note: this is in regards to c-time formatting using ```std::tm``` data, ```<chrono>``` time-dates are not yet supported
+- booleans will have the correct true/false textual representation
+- All other arithmetic values will be localized based on decimal and thousands separator groupings
+
 <br>
 
 How you format arguments here is *exactly* the same as how you format arguments with ```<format>``` and ```fmtlib``` so <br>
