@@ -47,7 +47,7 @@ All of the above can be localized for a specific locale as well:
     that glyph. 
   - The above Unicode point is where this library seems to differ from ```<format>```, as ```<format>``` uses "```?```" irregardless.
 - booleans will have the correct true/false textual representation
-- All other arithmetic values will be localized based on decimal and thousands separator groupings
+- All other arithmetic values will be localized based on decimal and thousands separator groupings or according to the format flag(s) present
 
 <br>
 
