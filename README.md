@@ -37,6 +37,9 @@ This library is able to format:
 All of the above can be localized for a specific locale as well:
 - Time arguments will be localized with the format and textual representation for a specific locale
   - Note: this is in regards to c-time formatting using ```std::tm``` data, ```<chrono>``` time-dates are not yet supported
+  - Due to the nature of having Unicode support, this will inherently allow you to display the glyphs represented by the<br> 
+    codepoints instead of the commmonly used character "```?```" assuming the font you're using supports that glyph. 
+  - The above Unicode point is where this library seems to differ from ```<format>```, as ```<format>``` uses "```?```" irregardless.
 - booleans will have the correct true/false textual representation
 - All other arithmetic values will be localized based on decimal and thousands separator groupings
 
