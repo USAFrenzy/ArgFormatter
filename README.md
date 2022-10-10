@@ -63,7 +63,7 @@ to the formatting grammar used.
 ------------------------------- The *ONLY* file that needs to be included is ```ArgFormatter.h```. -------------------------------
 
 </div>
-<br>
+
 <div align="center">
 <h3> IMPORTANT NOTE </h3>
 </div>
