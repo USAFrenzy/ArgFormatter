@@ -60,15 +60,22 @@ to the formatting grammar used.
 
 <div align="center">
 
--------------------------------- The *ONLY* file that needs to be included is ```ArgFormatter.h```. --------------------------------
+------------------------------- The *ONLY* file that needs to be included is ```ArgFormatter.h```. -------------------------------
 
 </div>
-
+<br>
 <div align="center">
 <h3> IMPORTANT NOTE </h3>
 </div>
 
-When you clone this repo, please make sure to run "```git clone --recursive https://github.com/USAFrenzy/ArgFormatter.git```"
-so that the dependancy project, ```UTF-Utils```, is also cloned alongside ```ArgFormatter```, otherwise, you'll run into some compilation issues when using this library. Both ```ArgFormatter``` and ```UTF-Utils``` use permissive licenses (MIT) so you won't run into any limiting usages using either of them.
+<div align="center">
+
+When you clone this repo, please make sure to run <br>"```git clone --recursive https://github.com/USAFrenzy/ArgFormatter.git```"<br><br>
+This is so that the dependancy project, ```UTF-Utils```, is also cloned alongside ```ArgFormatter```, otherwise, you'll run into
+some compilation issues when using this library. Both ```ArgFormatter``` and ```UTF-Utils``` use permissive licenses (MIT) so you
+won't run into any limiting usages using either of them.
+
+</div>
+
 
 ------------------------------------------
