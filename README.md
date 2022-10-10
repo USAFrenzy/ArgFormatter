@@ -23,14 +23,19 @@ This library is able to format:
 - c-style strings
 - string views
 - ints
+- unsigned ints
 - long ints
 - long long ints
+- unigned long long ints
 - floats
-- long floats
 - doubles
 - long doubles
+- const void*
+- void*
 - booleans
-- Any custom type that you've provided a template specialization for with the ```CustomFormatter``` struct.
+- chars
+- std::tm
+- And any custom type that you've provided a template specialization for with the ```CustomFormatter``` struct.
 
 <br>
 

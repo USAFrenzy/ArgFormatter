@@ -23,13 +23,15 @@
 namespace formatter {
 
 	// convenience typedefs
-	template<typename T> using type        = std::remove_cvref_t<T>;
-	template<typename T> using FwdRef      = std::add_lvalue_reference_t<type<T>>;
-	template<typename T> using FwdConstRef = std::add_lvalue_reference_t<std::add_const_t<type<T>>>;
-	template<typename T> using FwdMove     = std::add_rvalue_reference_t<type<T>>;
-	template<typename T> using Iterator    = std::back_insert_iterator<type<T>>;
-	template<typename T> using FwdMoveIter = std::add_rvalue_reference_t<Iterator<T>>;
-	template<typename T> using FwdRefIter  = std::add_lvalue_reference_t<Iterator<T>>;
+	namespace internal_helper::af_typedefs {
+		template<typename T> using type        = std::remove_cvref_t<T>;
+		template<typename T> using FwdRef      = std::add_lvalue_reference_t<type<T>>;
+		template<typename T> using FwdConstRef = std::add_lvalue_reference_t<std::add_const_t<type<T>>>;
+		template<typename T> using FwdMove     = std::add_rvalue_reference_t<type<T>>;
+		template<typename T> using Iterator    = std::back_insert_iterator<type<T>>;
+		template<typename T> using FwdMoveIter = std::add_rvalue_reference_t<Iterator<T>>;
+		template<typename T> using FwdRefIter  = std::add_lvalue_reference_t<Iterator<T>>;
+	}    // namespace internal_helper::af_typedefs
 
 	template<typename Value> struct CustomFormatter
 	{
@@ -44,89 +46,100 @@ namespace formatter {
 		template<typename ValueType, typename ContainerCtx> constexpr auto Format(ValueType&&, ContainerCtx&&) { }
 	};
 
-	template<typename T> struct IteratorAccessHelper: public std::back_insert_iterator<T>
-	{
-		using std::back_insert_iterator<T>::container_type;
-		constexpr explicit IteratorAccessHelper(std::back_insert_iterator<T>&(Iter)): std::back_insert_iterator<T>(std::forward<FwdRefIter<T>>(Iter)) { }
-		constexpr explicit IteratorAccessHelper(std::back_insert_iterator<T> && (Iter)): std::back_insert_iterator<T>(std::forward<FwdMoveIter<T>>(Iter)) { }
-		constexpr IteratorAccessHelper()                                       = delete;
-		constexpr IteratorAccessHelper(const IteratorAccessHelper&)            = delete;
-		constexpr IteratorAccessHelper& operator=(const IteratorAccessHelper&) = delete;
-		constexpr IteratorAccessHelper(IteratorAccessHelper&&)                 = default;
-		constexpr IteratorAccessHelper& operator=(IteratorAccessHelper&&)      = default;
-		constexpr ~IteratorAccessHelper()                                      = default;
+	namespace internal_helper {
 
-		constexpr auto& Container() {
-			return *(this->container);
-		}
-	};
+		template<typename T> struct IteratorAccessHelper: public std::back_insert_iterator<T>
+		{
+			using std::back_insert_iterator<T>::container_type;
+			constexpr explicit IteratorAccessHelper(std::back_insert_iterator<T>&(Iter))
+				: std::back_insert_iterator<T>(std::forward<af_typedefs::FwdRefIter<T>>(Iter)) { }
+			constexpr explicit IteratorAccessHelper(std::back_insert_iterator<T> && (Iter))
+				: std::back_insert_iterator<T>(std::forward<af_typedefs::FwdMoveIter<T>>(Iter)) { }
+			constexpr IteratorAccessHelper()                                       = delete;
+			constexpr IteratorAccessHelper(const IteratorAccessHelper&)            = delete;
+			constexpr IteratorAccessHelper& operator=(const IteratorAccessHelper&) = delete;
+			constexpr IteratorAccessHelper(IteratorAccessHelper&&)                 = default;
+			constexpr IteratorAccessHelper& operator=(IteratorAccessHelper&&)      = default;
+			constexpr ~IteratorAccessHelper()                                      = default;
 
-	struct CustomValue
-	{
-		using FormatCallBackFunc = void (*)(std::string_view parseView, const void* data, const void* contPtr);
-		template<typename Container, typename T>
-		explicit constexpr CustomValue(Container&& cont, T&& value)
-			: data(std::addressof(value)), container(std::addressof(cont)), CustomFormatCallBack([](std::string_view parseView, const void* ptr, const void* contPtr) {
-				  using QualifiedType = std::add_const_t<type<T>>;
-				  using QualifiedRef  = std::add_lvalue_reference_t<QualifiedType>;
-				  using ContainerType = type<Container>;
-				  using ContainerRef  = std::add_lvalue_reference_t<ContainerType>;
-				  /*  Above are just  some convenient typedefs from the paramater value types for use below in casting the pointers to  the correct types */
-				  auto formatter { CustomFormatter<type<T>> {} };
-				  formatter.Parse(parseView);
-				  formatter.Format(QualifiedRef(*static_cast<QualifiedType*>(ptr)), ContainerRef(*static_cast<const ContainerType*>(contPtr)));
-			  }) { }
-		constexpr CustomValue()                              = delete;
-		constexpr CustomValue(const CustomValue&)            = delete;
-		constexpr CustomValue& operator=(const CustomValue&) = delete;
-		constexpr CustomValue(CustomValue&& o) noexcept: data(o.data), container(o.container), CustomFormatCallBack(std::move(o.CustomFormatCallBack)) { }
-		constexpr CustomValue& operator=(CustomValue&& o) noexcept {
-			data                 = o.data;
-			container            = o.container;
-			CustomFormatCallBack = std::move(o.CustomFormatCallBack);
-			return *this;
-		}
-		constexpr ~CustomValue() = default;
+			constexpr auto& Container() {
+				return *(this->container);
+			}
+		};
 
-		constexpr void FormatCallBack(std::string_view parseView) {
-			CustomFormatCallBack(parseView, data, container);
-		}
+		struct CustomValue
+		{
+			using FormatCallBackFunc = void (*)(std::string_view parseView, const void* data, const void* contPtr);
+			template<typename Container, typename T>
+			explicit constexpr CustomValue(Container&& cont, T&& value)
+				: data(std::addressof(value)), container(std::addressof(cont)),
+				  CustomFormatCallBack([](std::string_view parseView, const void* ptr, const void* contPtr) {
+					  using QualifiedType = std::add_const_t<internal_helper::af_typedefs::type<T>>;
+					  using QualifiedRef  = std::add_lvalue_reference_t<QualifiedType>;
+					  using ContainerType = internal_helper::af_typedefs::type<Container>;
+					  using ContainerRef  = std::add_lvalue_reference_t<ContainerType>;
+					  /*  Above are just  some convenient typedefs from the paramater value types for use below in casting the pointers to  the correct types */
+					  auto formatter { CustomFormatter<internal_helper::af_typedefs::type<T>> {} };
+					  formatter.Parse(parseView);
+					  formatter.Format(QualifiedRef(*static_cast<QualifiedType*>(ptr)), ContainerRef(*static_cast<const ContainerType*>(contPtr)));
+				  }) { }
+			constexpr CustomValue()                              = delete;
+			constexpr CustomValue(const CustomValue&)            = delete;
+			constexpr CustomValue& operator=(const CustomValue&) = delete;
+			constexpr CustomValue(CustomValue&& o) noexcept: data(o.data), container(o.container), CustomFormatCallBack(std::move(o.CustomFormatCallBack)) { }
+			constexpr CustomValue& operator=(CustomValue&& o) noexcept {
+				data                 = o.data;
+				container            = o.container;
+				CustomFormatCallBack = std::move(o.CustomFormatCallBack);
+				return *this;
+			}
+			constexpr ~CustomValue() = default;
 
-		const void* data;
-		const void* container;
-		FormatCallBackFunc CustomFormatCallBack;
-	};
+			constexpr void FormatCallBack(std::string_view parseView) {
+				CustomFormatCallBack(parseView, data, container);
+			}
 
-	// clang-format off
-	using VType = std::variant<std::monostate, std::string, const char*, std::string_view, int, unsigned int, long long, 
-		                          unsigned long long, bool, char, float, double, long double, const void*, void*, std::tm, CustomValue>;
-	// clang-format on
+			const void* data;
+			const void* container;
+			FormatCallBackFunc CustomFormatCallBack;
+		};
+	}    // namespace internal_helper
+	namespace internal_helper::af_typedefs {
+		// clang-format off
+	using VType = std::variant<std::monostate, std::string, const char*, std::string_view, int, unsigned int, long long,
+		unsigned long long, bool, char, float, double, long double, const void*, void*, std::tm, internal_helper::CustomValue>;
+		// clang-format on
+	}    // namespace internal_helper::af_typedefs
 
-	template<typename T, typename U> struct is_supported;
-	template<typename T, typename... Ts> struct is_supported<T, std::variant<Ts...>>: std::bool_constant<(std::is_same_v<std::remove_reference_t<T>, Ts> || ...)>
-	{
-	};
-	template<typename T> inline constexpr bool is_supported_v = is_supported<T, VType>::value;
+	namespace internal_helper::af_concepts {
 
-	template<typename T> struct is_supported_ptr_type;
-	template<typename T>
-	struct is_supported_ptr_type: std::bool_constant<std::is_same_v<T, std::string_view> || std::is_same_v<T, const char*> || std::is_same_v<T, void*> ||
-	                                                 std::is_same_v<T, const void*> || std::is_same_v<T, std::tm*>>
-	{
-	};
-	template<typename T> inline constexpr bool is_supported_ptr_type_v = is_supported_ptr_type<type<T>>::value;
+		template<typename T, typename U> struct is_supported;
+		template<typename T, typename... Ts> struct is_supported<T, std::variant<Ts...>>: std::bool_constant<(std::is_same_v<std::remove_reference_t<T>, Ts> || ...)>
+		{
+		};
+		template<typename T> inline constexpr bool is_supported_v = is_supported<T, internal_helper::af_typedefs::VType>::value;
 
-	template<typename T> struct has_formatter: std::bool_constant<std::is_default_constructible_v<CustomFormatter<T>>>
-	{
-	};
-	template<typename T> inline constexpr bool has_formatter_v = has_formatter<T>::value;
+		template<typename T> struct is_supported_ptr_type;
+		template<typename T>
+		struct is_supported_ptr_type: std::bool_constant<std::is_same_v<T, std::string_view> || std::is_same_v<T, const char*> || std::is_same_v<T, void*> ||
+		                                                 std::is_same_v<T, const void*> || std::is_same_v<T, std::tm*>>
+		{
+		};
+		template<typename T> inline constexpr bool is_supported_ptr_type_v = is_supported_ptr_type<internal_helper::af_typedefs::type<T>>::value;
 
-	template<typename T> struct is_formattable;
-	template<typename T>
-	struct is_formattable: std::bool_constant<is_supported<std::remove_reference_t<T>, VType>::value || has_formatter<std::remove_cvref_t<T>>::value>
-	{
-	};
-	template<typename T> inline constexpr bool is_formattable_v = is_formattable<T>::value;
+		template<typename T> struct has_formatter: std::bool_constant<std::is_default_constructible_v<CustomFormatter<T>>>
+		{
+		};
+		template<typename T> inline constexpr bool has_formatter_v = has_formatter<T>::value;
+
+		template<typename T> struct is_formattable;
+		template<typename T>
+		struct is_formattable
+			: std::bool_constant<is_supported<std::remove_reference_t<T>, internal_helper::af_typedefs::VType>::value || has_formatter<std::remove_cvref_t<T>>::value>
+		{
+		};
+		template<typename T> inline constexpr bool is_formattable_v = is_formattable<T>::value;
+	}    // namespace internal_helper::af_concepts
 
 }    // namespace formatter
 
@@ -171,7 +184,7 @@ namespace formatter::msg_details {
 		template<typename T> constexpr void StoreNativeArg(T&& arg);
 		template<typename Iter, typename T> constexpr auto StoreCustomArg(Iter&& iter, T&& arg) -> decltype(iter);
 
-		constexpr std::array<VType, MAX_ARG_COUNT>& ArgStorage();
+		constexpr std::array<internal_helper::af_typedefs::VType, MAX_ARG_COUNT>& ArgStorage();
 		constexpr std::array<SpecType, MAX_ARG_COUNT>& SpecTypesCaptured();
 		constexpr std::string_view string_state(size_t index);
 		constexpr std::string_view c_string_state(size_t index);
@@ -188,52 +201,55 @@ namespace formatter::msg_details {
 		constexpr const void* const_void_ptr_state(size_t index);
 		constexpr void* void_ptr_state(size_t index);
 		constexpr std::tm& c_time_state(size_t index);
-		constexpr CustomValue& custom_state(size_t index);
+		constexpr internal_helper::CustomValue& custom_state(size_t index);
 
 	  private:
-		std::array<VType, MAX_ARG_COUNT> argContainer {};
+		std::array<internal_helper::af_typedefs::VType, MAX_ARG_COUNT> argContainer {};
 		std::array<SpecType, MAX_ARG_COUNT> specContainer {};
 		size_t counter {};
 	};
 	// putting the definition here since clang was warning on extra qualifiers
 	template<typename T> static constexpr SpecType GetArgType(T&& val) {
 		using enum SpecType;
-		if constexpr( std::is_same_v<type<T>, std::monostate> ) {
+		if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::monostate> ) {
 				return std::forward<SpecType>(MonoType);
-		} else if constexpr( std::is_same_v<type<T>, std::string> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::string> ) {
 				return std::forward<SpecType>(StringType);
-		} else if constexpr( std::is_same_v<type<T>, const char*> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, const char*> ) {
 				return std::forward<SpecType>(CharPointerType);
-		} else if constexpr( std::is_same_v<type<T>, std::string_view> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::string_view> ) {
 				return std::forward<SpecType>(StringViewType);
-		} else if constexpr( std::is_same_v<type<T>, int> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, int> ) {
 				return std::forward<SpecType>(IntType);
-		} else if constexpr( std::is_same_v<type<T>, unsigned int> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, unsigned int> ) {
 				return std::forward<SpecType>(U_IntType);
-		} else if constexpr( std::is_same_v<type<T>, long long> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, long long> ) {
 				return std::forward<SpecType>(LongLongType);
-		} else if constexpr( std::is_same_v<type<T>, unsigned long long> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, unsigned long long> ) {
 				return std::forward<SpecType>(U_LongLongType);
-		} else if constexpr( std::is_same_v<type<T>, bool> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, bool> ) {
 				return std::forward<SpecType>(BoolType);
-		} else if constexpr( std::is_same_v<type<T>, char> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, char> ) {
 				return std::forward<SpecType>(CharType);
-		} else if constexpr( std::is_same_v<type<T>, float> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, float> ) {
 				return std::forward<SpecType>(FloatType);
-		} else if constexpr( std::is_same_v<type<T>, double> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, double> ) {
 				return std::forward<SpecType>(DoubleType);
-		} else if constexpr( std::is_same_v<type<T>, long double> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, long double> ) {
 				return std::forward<SpecType>(LongDoubleType);
-		} else if constexpr( std::is_same_v<type<T>, const void*> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, const void*> ) {
 				return std::forward<SpecType>(ConstVoidPtrType);
-		} else if constexpr( std::is_same_v<type<T>, void*> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, void*> ) {
 				return std::forward<SpecType>(VoidPtrType);
-		} else if constexpr( std::is_same_v<type<T>, std::tm> ) {
+		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::tm> ) {
 				return std::forward<SpecType>(CTimeType);
 		} else {
-				static_assert(is_formattable_v<type<T>>, "A Template Specialization Must Exist For A Custom Type Argument.\n\t"
-				                                         "For ArgFormatter, This Can Be Done By Specializing The CustomFormatter "
-														 "Template For Your Type And Implementing The Parse() And Format() Functions.");
+				static_assert(internal_helper::af_concepts::is_formattable_v<internal_helper::af_typedefs::type<T>>, "A Template Specialization Must Exist For A "
+				                                                                                                     "Custom Type Argument.\n\t"
+				                                                                                                     "For ArgFormatter, This Can Be Done By "
+				                                                                                                     "Specializing The CustomFormatter "
+				                                                                                                     "Template For Your Type And Implementing The "
+				                                                                                                     "Parse() And Format() Functions.");
 				return std::forward<SpecType>(CustomType);
 			}
 	}

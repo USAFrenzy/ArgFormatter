@@ -11,69 +11,72 @@
 using namespace formatter::msg_details;
 namespace formatter {
 
-	enum class ErrorType
-	{
-		none = 0,
-		missing_bracket,
-		position_field_spec,
-		position_field_mode,
-		position_field_no_position,
-		position_field_runon,
-		max_args_exceeded,
-		invalid_fill_character,
-		invalid_alt_type,
-		invalid_precision_type,
-		invalid_locale_type,
-		invalid_int_spec,
-		invalid_float_spec,
-		invalid_string_spec,
-		invalid_bool_spec,
-		invalid_char_spec,
-		invalid_pointer_spec,
-		invalid_ctime_spec,
-		missing_ctime_spec,
-		invalid_codepoint,
-	};
+	namespace af_errors {
 
-	struct error_handler
-	{
-		// drop-in replacement for format_error for the ArgFormatter class
-		class format_error: public std::runtime_error
+		enum class ErrorType
 		{
-		  public:
-			explicit format_error(const char* message): std::runtime_error(message) { }
-			explicit format_error(const std::string& message): std::runtime_error(message) { }
-			format_error(const format_error&)            = default;
-			format_error& operator=(const format_error&) = default;
-			format_error(format_error&&)                 = default;
-			format_error& operator=(format_error&&)      = default;
-			~format_error() noexcept override            = default;
+			none = 0,
+			missing_bracket,
+			position_field_spec,
+			position_field_mode,
+			position_field_no_position,
+			position_field_runon,
+			max_args_exceeded,
+			invalid_fill_character,
+			invalid_alt_type,
+			invalid_precision_type,
+			invalid_locale_type,
+			invalid_int_spec,
+			invalid_float_spec,
+			invalid_string_spec,
+			invalid_bool_spec,
+			invalid_char_spec,
+			invalid_pointer_spec,
+			invalid_ctime_spec,
+			missing_ctime_spec,
+			invalid_codepoint,
 		};
 
-		static constexpr std::array<const char*, 20> format_error_messages = {
-			"Unkown Formatting Error Occured.",
-			"Missing Closing '}' In Argument Spec Field.",
-			"Error In Position Field: No ':' Or '}' Found While In Automatic Indexing Mode.",
-			"Error In Postion Field: Cannot Mix Manual And Automatic Indexing For Arguments."
-			"Error In Position Field: Missing Positional Argument Before ':' In Manual Indexing Mode.",
-			"Formatting Error Detected: Missing ':' Before Next Specifier.",
-			"Error In Position Argument Field: Max Position (24) Exceeded.",
-			"Error In Fill/Align Field: Invalid Fill Character Provided.",
-			"Error In Alternate Field: Argument Type Has No Alternate Form.",
-			"Error In Precision Field: An Integral Type Is Not Allowed To Have A Precsision Field.",
-			"Error In Locale Field: Argument Type Cannot Be Localized.",
-			"Error In Format: Invalid Type Specifier For Int Type Argument.",
-			"Error In Format: Invalid Type Specifier For Float Type Argument.",
-			"Error In Format: Invalid Type Specifier For String Type Argument.",
-			"Error In Format: Invalid Type Specifier For Bool Type Argument.",
-			"Error In Format: Invalid Type Specifier For Char Type Argument.",
-			"Error In Format: Invalid Type Specifier For Pointer Type Argument.",
-			"Error In Format: Invalid Time Specifier For C-Time Type Argument.",
-			"Error In Format: Missing C-Time Specifier After '%'.",
-			"Error In Decoding Character Set: Illegal Code Point Present In Code Unit",
+		struct error_handler
+		{
+			// drop-in replacement for format_error for the ArgFormatter class
+			class format_error: public std::runtime_error
+			{
+			  public:
+				explicit format_error(const char* message): std::runtime_error(message) { }
+				explicit format_error(const std::string& message): std::runtime_error(message) { }
+				format_error(const format_error&)            = default;
+				format_error& operator=(const format_error&) = default;
+				format_error(format_error&&)                 = default;
+				format_error& operator=(format_error&&)      = default;
+				~format_error() noexcept override            = default;
+			};
+
+			static constexpr std::array<const char*, 20> format_error_messages = {
+				"Unkown Formatting Error Occured.",
+				"Missing Closing '}' In Argument Spec Field.",
+				"Error In Position Field: No ':' Or '}' Found While In Automatic Indexing Mode.",
+				"Error In Postion Field: Cannot Mix Manual And Automatic Indexing For Arguments."
+				"Error In Position Field: Missing Positional Argument Before ':' In Manual Indexing Mode.",
+				"Formatting Error Detected: Missing ':' Before Next Specifier.",
+				"Error In Position Argument Field: Max Position (24) Exceeded.",
+				"Error In Fill/Align Field: Invalid Fill Character Provided.",
+				"Error In Alternate Field: Argument Type Has No Alternate Form.",
+				"Error In Precision Field: An Integral Type Is Not Allowed To Have A Precsision Field.",
+				"Error In Locale Field: Argument Type Cannot Be Localized.",
+				"Error In Format: Invalid Type Specifier For Int Type Argument.",
+				"Error In Format: Invalid Type Specifier For Float Type Argument.",
+				"Error In Format: Invalid Type Specifier For String Type Argument.",
+				"Error In Format: Invalid Type Specifier For Bool Type Argument.",
+				"Error In Format: Invalid Type Specifier For Char Type Argument.",
+				"Error In Format: Invalid Type Specifier For Pointer Type Argument.",
+				"Error In Format: Invalid Time Specifier For C-Time Type Argument.",
+				"Error In Format: Missing C-Time Specifier After '%'.",
+				"Error In Decoding Character Set: Illegal Code Point Present In Code Unit",
+			};
+			[[noreturn]] constexpr void ReportError(ErrorType err);
 		};
-		[[noreturn]] constexpr void ReportError(ErrorType err);
-	};
+	}    // namespace af_errors
 }    // namespace formatter
 
 namespace formatter::globals {
@@ -180,7 +183,7 @@ namespace formatter::arg_formatter {
 		size_t unreservedSize {};
 		(
 		[](size_t& totalSize, auto&& arg, size_t& unreserved) {
-			using base_type = type<decltype(arg)>;
+			using base_type = internal_helper::af_typedefs::type<decltype(arg)>;
 			if constexpr( std::is_same_v<base_type, std::string> || std::is_same_v<base_type, std::string_view> ) {
 					totalSize += arg.size();
 			} else if constexpr( std::is_same_v<base_type, const char*> ) {
@@ -207,8 +210,8 @@ namespace formatter::arg_formatter {
 	    Compatible class that provides some of the same functionality that mirrors <format> and libfmt for basic formatting needs for pre  C++20 and MSVC's
 	    pre-backported fixes (which required C ++23) for some build versions of Visual Studio as well as for performance needs. Everything in this class either
 	    matches (in the case of simple double substitution) or greatly exceeds the performance of MSVC's implementation -  with the caveat no utf-8 support and
-	    no type-erasure as of right now. I believe libfmt is faster than this basic implementation  (and unarguably way more comprehensive as well) but I have
-	yet to bench timings against it.
+	    no internal_helper::af_typedefs::type-erasure as of right now. I believe libfmt is faster than this basic implementation  (and unarguably way more
+	comprehensive as well) but I have yet to bench timings against it.
 	***********************************************************************************************************************************************************/
 	/*************************************************************************  NOTE *************************************************************************/
 	/************************************************** Building this project on Ubuntu emitted the following **************************************************
@@ -232,8 +235,8 @@ namespace formatter::arg_formatter {
 		// clang-format off
 		template<typename T, typename... Args> constexpr void se_format_to(std::back_insert_iterator<T>&& Iter, const std::locale& loc, std::string_view sv, Args&&... args);
 		template<typename T, typename... Args> constexpr void se_format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args);
-		template<typename... Args> [[nodiscard]]  std::string se_format(const std::locale& locale, std::string_view sv, Args&&... args);
-		template<typename... Args> [[nodiscard]]  std::string se_format(std::string_view sv, Args&&... args);
+		template<typename... Args> [[nodiscard]] std::string se_format(const std::locale& locale, std::string_view sv, Args&&... args);
+		template<typename... Args> [[nodiscard]] std::string se_format(std::string_view sv, Args&&... args);
 		// clang-format on
 
 	  private:
@@ -382,18 +385,18 @@ namespace formatter::arg_formatter {
 		template<typename T> constexpr void WriteSimpleVoidPtr(T&& container);
 
 		// clang-format off
-		template<typename T> constexpr void WriteAlignedLeft(T &&container, const int& totalWidth);
-		template<typename T>constexpr void WriteAlignedLeft(T &&container, std::string_view val, const int& precision, const int& totalWidth);
-		template<typename T> constexpr void WriteAlignedRight(T &&container, const int& totalWidth, const size_t& fillAmount);
-		template<typename T>constexpr void WriteAlignedRight(T &&container, std::string_view val, const int& precision, const int& totalWidth, const size_t& fillAmount);
-		template<typename T> constexpr void WriteAlignedCenter(T &&container, const int& totalWidth, const size_t& fillAmount);
-		template<typename T>constexpr void WriteAlignedCenter(T &&container, std::string_view val, const int& precision, const int& totalWidth, const size_t& fillAmount);
-		template<typename T>constexpr void WriteSimplePadding(T &&container, const size_t& fillAmount);
+		template<typename T> constexpr void WriteAlignedLeft(T&& container, const int& totalWidth);
+		template<typename T>constexpr void WriteAlignedLeft(T&& container, std::string_view val, const int& precision, const int& totalWidth);
+		template<typename T> constexpr void WriteAlignedRight(T&& container, const int& totalWidth, const size_t& fillAmount);
+		template<typename T>constexpr void WriteAlignedRight(T&& container, std::string_view val, const int& precision, const int& totalWidth, const size_t& fillAmount);
+		template<typename T> constexpr void WriteAlignedCenter(T&& container, const int& totalWidth, const size_t& fillAmount);
+		template<typename T>constexpr void WriteAlignedCenter(T&& container, std::string_view val, const int& precision, const int& totalWidth, const size_t& fillAmount);
+		template<typename T>constexpr void WriteSimplePadding(T&& container, const size_t& fillAmount);
 
-		template<typename T> constexpr void WriteNonAligned(T &&container);
-		template<typename T> constexpr void WriteNonAligned(T &&container, std::string_view val, const int& precision);
+		template<typename T> constexpr void WriteNonAligned(T&& container);
+		template<typename T> constexpr void WriteNonAligned(T&& container, std::string_view val, const int& precision);
 		template<typename T> requires std::is_arithmetic_v<std::remove_cvref_t<T>>
-		constexpr void WriteSign(T&& value, int& pos);
+			constexpr void WriteSign(T&& value, int& pos);
 		// clang-format on
 		template<typename T> constexpr void WriteBufferToContainer(T&& container);
 
@@ -406,7 +409,7 @@ namespace formatter::arg_formatter {
 		std::array<char, AF_ARG_BUFFER_SIZE> buffer;
 		size_t valueSize;
 		std::vector<char> fillBuffer;
-		formatter::error_handler errHandle;
+		formatter::af_errors::error_handler errHandle;
 		TimeSpecs timeSpec {};
 	};
 #include "ArgFormatterImpl.h"
@@ -421,12 +424,12 @@ namespace formatter {
 	}    // namespace globals
 
 	template<typename T, typename... Args> static constexpr void format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args) {
-		globals::staticFormatter->se_format_to(std::forward<FwdMoveIter<T>>(Iter), sv, std::forward<Args>(args)...);
+		globals::staticFormatter->se_format_to(std::forward<internal_helper::af_typedefs::FwdMoveIter<T>>(Iter), sv, std::forward<Args>(args)...);
 	}
 
 	template<typename T, typename... Args>
 	static constexpr void format_to(std::back_insert_iterator<T>&& Iter, const std::locale& locale, std::string_view sv, Args&&... args) {
-		globals::staticFormatter->se_format_to(std::forward<FwdMoveIter<T>>(Iter), locale, sv, std::forward<Args>(args)...);
+		globals::staticFormatter->se_format_to(std::forward<internal_helper::af_typedefs::FwdMoveIter<T>>(Iter), locale, sv, std::forward<Args>(args)...);
 	}
 
 	template<typename... Args> [[nodiscard]] static std::string format(std::string_view sv, Args&&... args) {
@@ -445,7 +448,7 @@ namespace formatter {
 
 	// Now that the runtime errors are organized in a neater fashion, would really love to figure out how libfmt does compile-time checking.
 	// A lot of what is being used to verify things are all runtime-access stuff so I'm assuming achieving this won't be easy at all =/
-	constexpr void formatter::error_handler::ReportError(ErrorType err) {
+	constexpr void formatter::af_errors::error_handler::ReportError(ErrorType err) {
 		using enum ErrorType;
 		switch( err ) {
 				case missing_bracket: throw format_error(format_error_messages[ 1 ]); break;
