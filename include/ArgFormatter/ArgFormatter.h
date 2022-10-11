@@ -183,7 +183,7 @@ namespace formatter::arg_formatter {
 		size_t unreservedSize {};
 		(
 		[](size_t& totalSize, auto&& arg, size_t& unreserved) {
-			using base_type = internal_helper::af_typedefs::type<decltype(arg)>;
+			using base_type = af_types::type<decltype(arg)>;
 			if constexpr( std::is_same_v<base_type, std::string> || std::is_same_v<base_type, std::string_view> ) {
 					totalSize += arg.size();
 			} else if constexpr( std::is_same_v<base_type, const char*> ) {
@@ -210,7 +210,7 @@ namespace formatter::arg_formatter {
 	    Compatible class that provides some of the same functionality that mirrors <format> and libfmt for basic formatting needs for pre  C++20 and MSVC's
 	    pre-backported fixes (which required C ++23) for some build versions of Visual Studio as well as for performance needs. Everything in this class either
 	    matches (in the case of simple double substitution) or greatly exceeds the performance of MSVC's implementation -  with the caveat no utf-8 support and
-	    no internal_helper::af_typedefs::type-erasure as of right now. I believe libfmt is faster than this basic implementation  (and unarguably way more
+	    no af_types::type-erasure as of right now. I believe libfmt is faster than this basic implementation  (and unarguably way more
 	comprehensive as well) but I have yet to bench timings against it.
 	***********************************************************************************************************************************************************/
 	/*************************************************************************  NOTE *************************************************************************/
@@ -424,12 +424,12 @@ namespace formatter {
 	}    // namespace globals
 
 	template<typename T, typename... Args> static constexpr void format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args) {
-		globals::staticFormatter->se_format_to(std::forward<internal_helper::af_typedefs::FwdMoveIter<T>>(Iter), sv, std::forward<Args>(args)...);
+		globals::staticFormatter->se_format_to(std::forward<af_types::FwdMoveIter<T>>(Iter), sv, std::forward<Args>(args)...);
 	}
 
 	template<typename T, typename... Args>
 	static constexpr void format_to(std::back_insert_iterator<T>&& Iter, const std::locale& locale, std::string_view sv, Args&&... args) {
-		globals::staticFormatter->se_format_to(std::forward<internal_helper::af_typedefs::FwdMoveIter<T>>(Iter), locale, sv, std::forward<Args>(args)...);
+		globals::staticFormatter->se_format_to(std::forward<af_types::FwdMoveIter<T>>(Iter), locale, sv, std::forward<Args>(args)...);
 	}
 
 	template<typename... Args> [[nodiscard]] static std::string format(std::string_view sv, Args&&... args) {

@@ -280,9 +280,8 @@ void formatter::arg_formatter::ArgFormatter::FormatTZName() {
 
 template<typename T> struct is_basic_char_buff;
 template<typename T>
-struct is_basic_char_buff: std::bool_constant<std::is_same_v<internal_helper::af_typedefs::type<T>, std::array<char, formatter::arg_formatter::AF_ARG_BUFFER_SIZE>> ||
-                                              std::is_same_v<internal_helper::af_typedefs::type<T>, std::vector<unsigned char>> ||
-                                              std::is_same_v<internal_helper::af_typedefs::type<T>, std::vector<char>>>
+struct is_basic_char_buff: std::bool_constant<std::is_same_v<af_types::type<T>, std::array<char, formatter::arg_formatter::AF_ARG_BUFFER_SIZE>> ||
+                                              std::is_same_v<af_types::type<T>, std::vector<unsigned char>> || std::is_same_v<af_types::type<T>, std::vector<char>>>
 {
 };
 template<typename T> inline constexpr bool is_basic_char_buff_v = is_basic_char_buff<T>::value;
@@ -361,10 +360,10 @@ template<typename T, typename U>
 requires utf_utils::utf_constraints::IsSupportedUSource<T> && utf_utils::utf_constraints::IsSupportedUContainer<U>
 static constexpr void FlushBuffer(T&& buff, size_t endPos, U&& container) {
 	namespace se_con = utf_utils::utf_constraints;
-	using CharType   = typename internal_helper::af_typedefs::type<U>::value_type;
+	using CharType   = typename af_types::type<U>::value_type;
 	if constexpr( std::is_same_v<CharType, char> ) {
 			// Assume utf-8 encoding and just handle as byte strings (as it should have been stored as such internally)
-			if constexpr( std::is_same_v<typename internal_helper::af_typedefs::type<T>::value_type, unsigned char> && std::is_signed_v<char> ) {
+			if constexpr( std::is_same_v<typename af_types::type<T>::value_type, unsigned char> && std::is_signed_v<char> ) {
 					// unsigned  char -> char
 					auto tmp { std::move(ConvBuffToSigned(buff, endPos)) };
 					if constexpr( se_con::is_string_v<U> ) {
@@ -377,10 +376,9 @@ static constexpr void FlushBuffer(T&& buff, size_t endPos, U&& container) {
 						}
 			} else {
 					// char -> char
-					if constexpr( std::is_same_v<internal_helper::af_typedefs::type<U>, std::string> ) {
+					if constexpr( std::is_same_v<af_types::type<U>, std::string> ) {
 							container.append(buff.data(), endPos);
-					} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<U>, std::vector<typename internal_helper::af_typedefs::type<U>::value_type>> )
-					{
+					} else if constexpr( std::is_same_v<af_types::type<U>, std::vector<typename af_types::type<U>::value_type>> ) {
 							container.insert(container.end(), buff.data(), buff.data() + endPos);
 					} else {
 							auto iter { std::back_inserter(container) };
@@ -418,10 +416,10 @@ static constexpr void FlushBuffer(T&& buff, size_t endPos, U&& container) {
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteBufferToContainer(T&& container) {
 	if( !specValues.localize ) {
-			using BuffRef = internal_helper::af_typedefs::FwdRef<std::array<char, AF_ARG_BUFFER_SIZE>>;
+			using BuffRef = af_types::FwdRef<std::array<char, AF_ARG_BUFFER_SIZE>>;
 			FlushBuffer(std::forward<BuffRef>(buffer), valueSize, std::forward<T>(container));
 	} else {
-			using BuffRef = internal_helper::af_typedefs::FwdRef<std::vector<unsigned char>>;
+			using BuffRef = af_types::FwdRef<std::vector<unsigned char>>;
 			auto& localeBuff { timeSpec.localizationBuff };
 			if constexpr( std::is_signed_v<char> ) {
 					FlushBuffer(std::move(ConvBuffToSigned(localeBuff, valueSize)), valueSize, std::forward<T>(container));
@@ -526,13 +524,13 @@ constexpr void formatter::arg_formatter::ArgFormatter::FillBuffWithChar(const in
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::FormatAlignment(T&& container, const int& totalWidth) {
 	if( auto fill { (totalWidth > valueSize) ? totalWidth - valueSize : 0 }; fill != 0 ) {
 			switch( specValues.align ) {
-					case Alignment::AlignLeft: return WriteAlignedLeft(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), totalWidth);
-					case Alignment::AlignRight: return WriteAlignedRight(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), totalWidth, fill);
-					case Alignment::AlignCenter: return WriteAlignedCenter(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), totalWidth, fill / 2);
-					default: return WriteSimplePadding(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), fill);
+					case Alignment::AlignLeft: return WriteAlignedLeft(std::forward<af_types::FwdRef<T>>(container), totalWidth);
+					case Alignment::AlignRight: return WriteAlignedRight(std::forward<af_types::FwdRef<T>>(container), totalWidth, fill);
+					case Alignment::AlignCenter: return WriteAlignedCenter(std::forward<af_types::FwdRef<T>>(container), totalWidth, fill / 2);
+					default: return WriteSimplePadding(std::forward<af_types::FwdRef<T>>(container), fill);
 				}
 	} else {
-			WriteNonAligned(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+			WriteNonAligned(std::forward<af_types::FwdRef<T>>(container));
 		}
 }
 
@@ -542,15 +540,13 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatAlignment(T&& conta
 	precision = precision != 0 ? precision > size ? size : precision : size;
 	if( auto fill { totalWidth > size ? totalWidth - size : 0 }; fill != 0 ) {
 			switch( specValues.align ) {
-					case Alignment::AlignLeft: return WriteAlignedLeft(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), val, precision, totalWidth);
-					case Alignment::AlignRight:
-						return WriteAlignedRight(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), val, precision, totalWidth, fill);
-					case Alignment::AlignCenter:
-						return WriteAlignedCenter(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), val, precision, totalWidth, fill / 2);
-					default: return WriteSimplePadding(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), fill);
+					case Alignment::AlignLeft: return WriteAlignedLeft(std::forward<af_types::FwdRef<T>>(container), val, precision, totalWidth);
+					case Alignment::AlignRight: return WriteAlignedRight(std::forward<af_types::FwdRef<T>>(container), val, precision, totalWidth, fill);
+					case Alignment::AlignCenter: return WriteAlignedCenter(std::forward<af_types::FwdRef<T>>(container), val, precision, totalWidth, fill / 2);
+					default: return WriteSimplePadding(std::forward<af_types::FwdRef<T>>(container), fill);
 				}
 	} else {
-			WriteNonAligned(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), val, precision);
+			WriteNonAligned(std::forward<af_types::FwdRef<T>>(container), val, precision);
 		}
 }
 
@@ -562,36 +558,33 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Form
 	if( totalWidth == 0 ) {    // use this check to guard from any unnecessary additional checks
 			if( IsSimpleSubstitution(argType, precision) ) {
 					// Handles The Case Of No Specifiers And No Alignment
-					return WriteSimpleValue(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argType);
+					return WriteSimpleValue(std::forward<af_types::FwdRef<T>>(container), argType);
 			}
 			// Handles The Case Of Specifiers And No Alignment
 			switch( argType ) {
 					default:
 						!specValues.localize ? FormatArgument(precision, totalWidth, argType) : LocalizeArgument(default_locale, precision, totalWidth, argType);
-						WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+						WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 						return;
 					case SpecType::StringViewType: [[fallthrough]];
 					case SpecType::CharPointerType: [[fallthrough]];
-					case SpecType::StringType: WriteFormattedString(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argType, precision); return;
+					case SpecType::StringType: WriteFormattedString(std::forward<af_types::FwdRef<T>>(container), argType, precision); return;
 				}
 	}
 	// Handles The Case Of Specifiers WITH Alignment
 	switch( argType ) {
 			default:
 				!specValues.localize ? FormatArgument(precision, totalWidth, argType) : LocalizeArgument(default_locale, precision, totalWidth, argType);
-				FormatAlignment(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), totalWidth);
+				FormatAlignment(std::forward<af_types::FwdRef<T>>(container), totalWidth);
 				return;
 			case SpecType::StringViewType:
-				FormatAlignment(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.string_view_state(specValues.argPosition), totalWidth,
-				                precision);
+				FormatAlignment(std::forward<af_types::FwdRef<T>>(container), argStorage.string_view_state(specValues.argPosition), totalWidth, precision);
 				return;
 			case SpecType::CharPointerType:
-				FormatAlignment(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.c_string_state(specValues.argPosition), totalWidth,
-				                precision);
+				FormatAlignment(std::forward<af_types::FwdRef<T>>(container), argStorage.c_string_state(specValues.argPosition), totalWidth, precision);
 				return;
 			case SpecType::StringType:
-				FormatAlignment(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.string_state(specValues.argPosition), totalWidth,
-				                precision);
+				FormatAlignment(std::forward<af_types::FwdRef<T>>(container), argStorage.string_state(specValues.argPosition), totalWidth, precision);
 				return;
 		}
 }
@@ -604,36 +597,33 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Form
 	if( totalWidth == 0 ) {    // use this check to guard from any unnecessary additional checks
 			if( IsSimpleSubstitution(argType, precision) ) {
 					// Handles The Case Of No Specifiers And No Alignment
-					return WriteSimpleValue(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argType);
+					return WriteSimpleValue(std::forward<af_types::FwdRef<T>>(container), argType);
 			}
 			// Handles The Case Of Specifiers And No Alignment
 			switch( argType ) {
 					default:
 						!specValues.localize ? FormatArgument(precision, totalWidth, argType) : LocalizeArgument(loc, precision, totalWidth, argType);
-						WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+						WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 						return;
 					case SpecType::StringViewType: [[fallthrough]];
 					case SpecType::CharPointerType: [[fallthrough]];
-					case SpecType::StringType: WriteFormattedString(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argType, precision); return;
+					case SpecType::StringType: WriteFormattedString(std::forward<af_types::FwdRef<T>>(container), argType, precision); return;
 				}
 	}
 	// Handles The Case Of Specifiers WITH Alignment
 	switch( argType ) {
 			default:
 				!specValues.localize ? FormatArgument(precision, totalWidth, argType) : LocalizeArgument(loc, precision, totalWidth, argType);
-				FormatAlignment(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), totalWidth);
+				FormatAlignment(std::forward<af_types::FwdRef<T>>(container), totalWidth);
 				return;
 			case SpecType::StringViewType:
-				FormatAlignment(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.string_view_state(specValues.argPosition), totalWidth,
-				                precision);
+				FormatAlignment(std::forward<af_types::FwdRef<T>>(container), argStorage.string_view_state(specValues.argPosition), totalWidth, precision);
 				return;
 			case SpecType::CharPointerType:
-				FormatAlignment(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.c_string_state(specValues.argPosition), totalWidth,
-				                precision);
+				FormatAlignment(std::forward<af_types::FwdRef<T>>(container), argStorage.c_string_state(specValues.argPosition), totalWidth, precision);
 				return;
 			case SpecType::StringType:
-				FormatAlignment(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.string_state(specValues.argPosition), totalWidth,
-				                precision);
+				FormatAlignment(std::forward<af_types::FwdRef<T>>(container), argStorage.string_state(specValues.argPosition), totalWidth, precision);
 				return;
 		}
 }
@@ -821,15 +811,15 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Form
 		                                                 : 0 };
 	const auto& counter { timeSpec.timeSpecCounter };
 	if( totalWidth == 0 && precision == 0 && counter < 2 ) {
-			return WriteSimpleCTime(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+			return WriteSimpleCTime(std::forward<af_types::FwdRef<T>>(container));
 	} else if( totalWidth == 0 ) {
 			!specValues.localize ? FormatCTime(argStorage.c_time_state(specValues.argPosition), precision, 0, counter)
 								 : LocalizeCTime(default_locale, argStorage.c_time_state(specValues.argPosition), precision);
-			return WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+			return WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 	} else {
 			!specValues.localize ? FormatCTime(argStorage.c_time_state(specValues.argPosition), precision, 0, counter)
 								 : LocalizeCTime(default_locale, argStorage.c_time_state(specValues.argPosition), precision);
-			FormatAlignment(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), totalWidth);
+			FormatAlignment(std::forward<af_types::FwdRef<T>>(container), totalWidth);
 		}
 }
 
@@ -840,15 +830,15 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Form
 		                                                 : 0 };
 	const auto& counter { timeSpec.timeSpecCounter };
 	if( totalWidth == 0 && precision == 0 && counter < 2 ) {
-			return WriteSimpleCTime(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+			return WriteSimpleCTime(std::forward<af_types::FwdRef<T>>(container));
 	} else if( totalWidth == 0 ) {
 			!specValues.localize ? FormatCTime(argStorage.c_time_state(specValues.argPosition), precision, 0, counter)
 								 : LocalizeCTime(loc, argStorage.c_time_state(specValues.argPosition), precision);
-			return WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+			return WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 	} else {
 			!specValues.localize ? FormatCTime(argStorage.c_time_state(specValues.argPosition), precision, 0, counter)
 								 : LocalizeCTime(loc, argStorage.c_time_state(specValues.argPosition), precision);
-			FormatAlignment(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), totalWidth);
+			FormatAlignment(std::forward<af_types::FwdRef<T>>(container), totalWidth);
 		}
 }
 
@@ -923,10 +913,9 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 			switch( sv.size() ) {
 					case 0: return;
 					case 1:
-						if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::string> ) {
+						if constexpr( std::is_same_v<af_types::type<T>, std::string> ) {
 								container += sv[ 0 ];
-						} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::vector<typename internal_helper::af_typedefs::type<T>::value_type>> )
-						{
+						} else if constexpr( std::is_same_v<af_types::type<T>, std::vector<typename af_types::type<T>::value_type>> ) {
 								container.emplace_back(sv[ 0 ]);
 						} else {
 								std::copy(sv.data(), sv.data() + 1, std::back_inserter(container));
@@ -941,15 +930,14 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 								auto& argType { argStorage.SpecTypesCaptured()[ 0 ] };
 								switch( argType ) {
 										case SpecType::CustomType: argStorage.custom_state(0).FormatCallBack(sv); return;
-										default: WriteSimpleValue(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), std::move(argType)); return;
+										default: WriteSimpleValue(std::forward<af_types::FwdRef<T>>(container), std::move(argType)); return;
 									}
 						}
 						// Otherwise, write out any remaining characters as-is and bypass the check that would have found
 						// this case in FindBrackets(). In most cases, ending early here saw ~2-3% gain in performance
-						if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::string> ) {
+						if constexpr( std::is_same_v<af_types::type<T>, std::string> ) {
 								container.append(sv.data(), sv.data() + 2);
-						} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::vector<typename internal_helper::af_typedefs::type<T>::value_type>> )
-						{
+						} else if constexpr( std::is_same_v<af_types::type<T>, std::vector<typename af_types::type<T>::value_type>> ) {
 								container.insert(container.end(), sv.data(), sv.data() + 2);
 						} else {
 								std::copy(sv.data(), sv.data() + 2, std::back_inserter(container));
@@ -959,10 +947,9 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 				}
 			// If the above wasn't executed, then find the first pair of curly brackets and if none were found, write out the parse string as-is
 			if( !FindBrackets(sv) ) {
-					if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::string> ) {
+					if constexpr( std::is_same_v<af_types::type<T>, std::string> ) {
 							container.append(sv.data(), sv.size());
-					} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::vector<typename internal_helper::af_typedefs::type<T>::value_type>> )
-					{
+					} else if constexpr( std::is_same_v<af_types::type<T>, std::vector<typename af_types::type<T>::value_type>> ) {
 							container.insert(container.end(), sv.data(), sv.data() + sv.size());
 							if( sv.back() != '\0' ) {
 									container.push_back('\0');
@@ -976,10 +963,9 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 			auto& begin { bracketResults.beginPos };
 			auto& end { bracketResults.endPos };
 			if( begin > 0 ) {
-					if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::string> ) {
+					if constexpr( std::is_same_v<af_types::type<T>, std::string> ) {
 							begin >= 2 ? container.append(sv.data(), begin) : container += sv[ 0 ];
-					} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::vector<typename internal_helper::af_typedefs::type<T>::value_type>> )
-					{
+					} else if constexpr( std::is_same_v<af_types::type<T>, std::vector<typename af_types::type<T>::value_type>> ) {
 							container.insert(container.end(), sv.data(), sv.data() + begin);
 					} else {
 							std::copy(sv.data(), sv.data() + begin, std::back_inserter(container));
@@ -1005,8 +991,8 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 					auto& argType { argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
 					switch( argType ) {
 							case SpecType::CustomType: argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket); break;
-							case SpecType::CTimeType: WriteSimpleCTime(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); break;
-							default: WriteSimpleValue(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argType); break;
+							case SpecType::CTimeType: WriteSimpleCTime(std::forward<af_types::FwdRef<T>>(container)); break;
+							default: WriteSimpleValue(std::forward<af_types::FwdRef<T>>(container), argType); break;
 						}
 					if( specValues.hasClosingBrace ) {
 							container.push_back('}');
@@ -1020,11 +1006,11 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 					case SpecType::CustomType: argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket); break;
 					case SpecType::CTimeType:
 						ParseTimeField(argBracket, pos);
-						FormatTimeField(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+						FormatTimeField(std::forward<af_types::FwdRef<T>>(container));
 						break;
 					default:
 						Parse(argBracket, pos, argType);
-						Format(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argType);
+						Format(std::forward<af_types::FwdRef<T>>(container), argType);
 						break;
 				}
 			if( specValues.hasClosingBrace ) {
@@ -1061,10 +1047,9 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 			switch( sv.size() ) {
 					case 0: return;
 					case 1:
-						if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::string> ) {
+						if constexpr( std::is_same_v<af_types::type<T>, std::string> ) {
 								container += sv[ 0 ];
-						} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::vector<typename internal_helper::af_typedefs::type<T>::value_type>> )
-						{
+						} else if constexpr( std::is_same_v<af_types::type<T>, std::vector<typename af_types::type<T>::value_type>> ) {
 								container.emplace_back(sv[ 0 ]);
 						} else {
 								std::copy(sv.data(), sv.data() + 1, std::back_inserter(container));
@@ -1079,15 +1064,14 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 								auto& argType { argStorage.SpecTypesCaptured()[ 0 ] };
 								switch( argType ) {
 										case SpecType::CustomType: argStorage.custom_state(0).FormatCallBack(sv); return;
-										default: WriteSimpleValue(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), std::move(argType)); return;
+										default: WriteSimpleValue(std::forward<af_types::FwdRef<T>>(container), std::move(argType)); return;
 									}
 						}
 						// Otherwise, write out any remaining characters as-is and bypass the check that would have found
 						// this case in FindBrackets(). In most cases, ending early here saw ~2-3% gain in performance
-						if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::string> ) {
+						if constexpr( std::is_same_v<af_types::type<T>, std::string> ) {
 								container.append(sv.data(), sv.data() + 2);
-						} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::vector<typename internal_helper::af_typedefs::type<T>::value_type>> )
-						{
+						} else if constexpr( std::is_same_v<af_types::type<T>, std::vector<typename af_types::type<T>::value_type>> ) {
 								container.insert(container.end(), sv.data(), sv.data() + 2);
 						} else {
 								std::copy(sv.data(), sv.data() + 2, std::back_inserter(container));
@@ -1097,10 +1081,9 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 				}
 			// If the above wasn't executed, then find the first pair of curly brackets and if none were found, write out the parse string as-is
 			if( !FindBrackets(sv) ) {
-					if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::string> ) {
+					if constexpr( std::is_same_v<af_types::type<T>, std::string> ) {
 							container.append(sv.data(), sv.size());
-					} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::vector<typename internal_helper::af_typedefs::type<T>::value_type>> )
-					{
+					} else if constexpr( std::is_same_v<af_types::type<T>, std::vector<typename af_types::type<T>::value_type>> ) {
 							container.insert(container.end(), sv.data(), sv.data() + sv.size());
 							if( sv.back() != '\0' ) {
 									container.push_back('\0');
@@ -1114,10 +1097,9 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 			auto& begin { bracketResults.beginPos };
 			auto& end { bracketResults.endPos };
 			if( begin > 0 ) {
-					if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::string> ) {
+					if constexpr( std::is_same_v<af_types::type<T>, std::string> ) {
 							begin >= 2 ? container.append(sv.data(), begin) : container += sv[ 0 ];
-					} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::vector<typename internal_helper::af_typedefs::type<T>::value_type>> )
-					{
+					} else if constexpr( std::is_same_v<af_types::type<T>, std::vector<typename af_types::type<T>::value_type>> ) {
 							container.insert(container.end(), sv.data(), sv.data() + begin);
 					} else {
 							std::copy(sv.data(), sv.data() + begin, std::back_inserter(container));
@@ -1143,8 +1125,8 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 					auto& argType { argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
 					switch( argType ) {
 							case SpecType::CustomType: argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket); break;
-							case SpecType::CTimeType: WriteSimpleCTime(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); break;
-							default: WriteSimpleValue(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argType); break;
+							case SpecType::CTimeType: WriteSimpleCTime(std::forward<af_types::FwdRef<T>>(container)); break;
+							default: WriteSimpleValue(std::forward<af_types::FwdRef<T>>(container), argType); break;
 						}
 					if( specValues.hasClosingBrace ) {
 							container.push_back('}');
@@ -1158,11 +1140,11 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 					case SpecType::CustomType: argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket); break;
 					case SpecType::CTimeType:
 						ParseTimeField(argBracket, pos);
-						FormatTimeField(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), loc);
+						FormatTimeField(std::forward<af_types::FwdRef<T>>(container), loc);
 						break;
 					default:
 						Parse(argBracket, pos, argType);
-						Format(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), loc, argType);
+						Format(std::forward<af_types::FwdRef<T>>(container), loc, argType);
 						break;
 				}
 			if( specValues.hasClosingBrace ) {
@@ -1611,7 +1593,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::Format24HourTime(int hour
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Write24HourTime(T&& container, const int& hour, const int& min, const int& sec) {
 	Format24HourTime(hour, min, sec);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatShortMonth(int mon) {
@@ -1625,7 +1607,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatShortMonth(int mon)
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteShortMonth(T&& container, const int& mon) {
 	FormatShortMonth(mon);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatShortWeekday(int wkday) {
@@ -1639,7 +1621,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatShortWeekday(int wk
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteShortWeekday(T&& container, const int& wkday) {
 	FormatShortWeekday(wkday);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatTimeDate(const std::tm& time) {
@@ -1656,12 +1638,12 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatTimeDate(const std:
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteTimeDate(T&& container, const std::tm& time) {
 	FormatTimeDate(time);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteShortYear(T&& container, const int& year) {
 	FormatShortYear(year);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatShortYear(int year) {
@@ -1672,12 +1654,12 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatShortYear(int year)
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WritePaddedDay(T&& container, const int& day) {
 	TwoDigitToBuff(day);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSpacePaddedDay(T&& container, const int& day) {
 	FormatSpacePaddedDay(day);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatSpacePaddedDay(int day) {
@@ -1688,7 +1670,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatSpacePaddedDay(int 
 template<typename T>
 constexpr void formatter::arg_formatter::ArgFormatter::WriteShortIsoWeekYear(T&& container, const int& year, const int& yrday, const int& wkday) {
 	FormatShortIsoWeekYear(year, yrday, wkday);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatShortIsoWeekYear(int year, int yrday, int wkday) {
@@ -1703,7 +1685,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatShortIsoWeekYear(in
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteDayOfYear(T&& container, const int& day) {
 	FormatDayOfYear(day);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatDayOfYear(int day) {
@@ -1715,13 +1697,13 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatDayOfYear(int day) 
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WritePaddedMonth(T&& container, const int& month) {
 	TwoDigitToBuff(month + 1);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteLiteral(T&& container, unsigned char lit) {
-	if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::string> ) {
+	if constexpr( std::is_same_v<af_types::type<T>, std::string> ) {
 			container += lit;
-	} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::vector<typename internal_helper::af_typedefs::type<T>::value_type>> ) {
+	} else if constexpr( std::is_same_v<af_types::type<T>, std::vector<typename af_types::type<T>::value_type>> ) {
 			container.insert(container.end(), &lit, &lit + 1);
 	} else {
 			std::copy(&lit, &lit + 1, std::back_inserter(container));
@@ -1734,7 +1716,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatLiteral(unsigned ch
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteAMPM(T&& container, const int& hour) {
 	FormatAMPM(hour);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatAMPM(int hour) {
@@ -1744,7 +1726,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatAMPM(int hour) {
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Write12HourTime(T&& container, const int& hour, const int& min, const int& sec) {
 	Format24HourTime(hour > 12 ? hour - 12 : hour, min, sec);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::Format12HourTime(int hour, int min, int sec, int precision) {
@@ -1754,7 +1736,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::Format12HourTime(int hour
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteWeekdayDec(T&& container, const int& wkday) {
 	FormatWeekdayDec(wkday);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatWeekdayDec(int wkday) {
@@ -1763,7 +1745,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatWeekdayDec(int wkda
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteMMDDYY(T&& container, const int& month, const int& day, const int& year) {
 	FormatMMDDYY(month, day, year);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatMMDDYY(int month, int day, int year) {
@@ -1778,7 +1760,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatMMDDYY(int month, i
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteIsoWeekDec(T&& container, const int& wkday) {
 	FormatIsoWeekDec(wkday);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatIsoWeekDec(int wkday) {
@@ -1787,12 +1769,12 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatIsoWeekDec(int wkda
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteUtcOffset(T&& container) {
 	FormatUtcOffset();
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteLongWeekday(T&& container, const int& wkday) {
 	FormatLongWeekday(wkday);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatLongWeekday(int wkday) {
@@ -1807,7 +1789,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatLongWeekday(int wkd
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteLongMonth(T&& container, const int& mon) {
 	FormatLongMonth(mon);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatLongMonth(int mon) {
@@ -1822,7 +1804,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatLongMonth(int mon) 
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteYYYYMMDD(T&& container, const int& year, const int& mon, const int& day) {
 	FormatYYYYMMDD(year, mon, day);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatYYYYMMDD(int year, int mon, int day) {
@@ -1836,7 +1818,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatYYYYMMDD(int year, 
 }
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteLongYear(T&& container, int year) {
 	FormatLongYear(year);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatLongYear(int year) {
@@ -1850,7 +1832,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatLongYear(int year) 
 template<typename T>
 constexpr void formatter::arg_formatter::ArgFormatter::WriteLongIsoWeekYear(T&& container, const int& year, const int& yrday, const int& wkday) {
 	FormatLongIsoWeekYear(year, yrday, wkday);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatLongIsoWeekYear(int year, int yrday, int wkday) {
@@ -1865,7 +1847,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatLongIsoWeekYear(int
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteTruncatedYear(T&& container, const int& year) {
 	FormatTruncatedYear(year);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatTruncatedYear(int year) {
@@ -1876,22 +1858,22 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatTruncatedYear(int y
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Write24Hour(T&& container, const int& hour) {
 	TwoDigitToBuff(hour);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Write12Hour(T&& container, const int& hour) {
 	TwoDigitToBuff(hour > 12 ? hour - 12 : hour);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteMinute(T&& container, const int& min) {
 	TwoDigitToBuff(min);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Write24HM(T&& container, const int& hour, const int& min) {
 	Format24HM(hour, min);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::Format24HM(int hour, int min) {
@@ -1902,33 +1884,33 @@ constexpr void formatter::arg_formatter::ArgFormatter::Format24HM(int hour, int 
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSecond(T&& container, const int& sec) {
 	TwoDigitToBuff(sec);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteTime(T&& container, const int& hour, const int& min, const int& sec) {
 	Format24HourTime(hour, min, sec);
 	(hour, min, sec);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteTZName(T&& container) {
 	FormatTZName();
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteWeek(T&& container, const int& yrday, const int& wkday) {
 	TwoDigitToBuff((10 + yrday - wkday) / 7);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteIsoWeek(T&& container, const int& yrday, const int& wkday) {
 	TwoDigitToBuff((yrday + 7 - (wkday == 0 ? 6 : wkday - 1)) / 7);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteIsoWeekNumber(T&& container, const int& year, const int& yrday, const int& wkday) {
 	FormatIsoWeekNumber(year, yrday, wkday);
-	WriteBufferToContainer(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container));
+	WriteBufferToContainer(std::forward<af_types::FwdRef<T>>(container));
 }
 
 constexpr void formatter::arg_formatter::ArgFormatter::FormatIsoWeekNumber(int year, int yrday, int wkday) {
@@ -1952,44 +1934,44 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatIsoWeekNumber(int y
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleCTime(T&& container) {
 	const auto& tm { argStorage.c_time_state(specValues.argPosition) };
 	switch( timeSpec.timeSpecContainer[ 0 ] ) {
-			case 'a': WriteShortWeekday(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_wday); return;
+			case 'a': WriteShortWeekday(std::forward<af_types::FwdRef<T>>(container), tm.tm_wday); return;
 			case 'h': [[fallthrough]];
-			case 'b': WriteShortMonth(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_mon); return;
-			case 'c': WriteTimeDate(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm); return;
-			case 'd': WritePaddedDay(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_mday); return;
-			case 'e': WriteSpacePaddedDay(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_mday); return;
-			case 'g': WriteShortIsoWeekYear(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_year, tm.tm_yday, tm.tm_wday); return;
-			case 'j': WriteDayOfYear(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_yday); return;
-			case 'm': WritePaddedMonth(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_mon); return;
-			case 'p': WriteAMPM(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_hour); return;
-			case 'r': Write12HourTime(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_hour, tm.tm_min, tm.tm_sec); return;
-			case 'u': WriteIsoWeekDec(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_wday); return;
-			case 'w': WriteWeekdayDec(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_wday); return;
+			case 'b': WriteShortMonth(std::forward<af_types::FwdRef<T>>(container), tm.tm_mon); return;
+			case 'c': WriteTimeDate(std::forward<af_types::FwdRef<T>>(container), tm); return;
+			case 'd': WritePaddedDay(std::forward<af_types::FwdRef<T>>(container), tm.tm_mday); return;
+			case 'e': WriteSpacePaddedDay(std::forward<af_types::FwdRef<T>>(container), tm.tm_mday); return;
+			case 'g': WriteShortIsoWeekYear(std::forward<af_types::FwdRef<T>>(container), tm.tm_year, tm.tm_yday, tm.tm_wday); return;
+			case 'j': WriteDayOfYear(std::forward<af_types::FwdRef<T>>(container), tm.tm_yday); return;
+			case 'm': WritePaddedMonth(std::forward<af_types::FwdRef<T>>(container), tm.tm_mon); return;
+			case 'p': WriteAMPM(std::forward<af_types::FwdRef<T>>(container), tm.tm_hour); return;
+			case 'r': Write12HourTime(std::forward<af_types::FwdRef<T>>(container), tm.tm_hour, tm.tm_min, tm.tm_sec); return;
+			case 'u': WriteIsoWeekDec(std::forward<af_types::FwdRef<T>>(container), tm.tm_wday); return;
+			case 'w': WriteWeekdayDec(std::forward<af_types::FwdRef<T>>(container), tm.tm_wday); return;
 			case 'D': [[fallthrough]];
-			case 'x': WriteMMDDYY(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_mon, tm.tm_mday, tm.tm_year); return;
-			case 'y': WriteShortYear(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_year); return;
-			case 'z': WriteUtcOffset(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
-			case 'A': WriteLongWeekday(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_wday); return;
-			case 'B': WriteLongMonth(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_mon); return;
-			case 'C': WriteTruncatedYear(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_year); return;
-			case 'F': WriteYYYYMMDD(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_year, tm.tm_mon, tm.tm_mday); return;
-			case 'G': WriteLongIsoWeekYear(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_year, tm.tm_yday, tm.tm_wday); return;
-			case 'H': Write24Hour(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_hour); return;
-			case 'I': Write12Hour(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_hour); return;
-			case 'M': WriteMinute(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_min); return;
-			case 'R': Write24HM(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_hour, tm.tm_min); return;
-			case 'S': WriteSecond(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_sec); return;
-			case 'T': Write24HourTime(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_hour, tm.tm_min, tm.tm_sec); return;
-			case 'U': WriteWeek(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_yday, tm.tm_wday); return;
-			case 'V': WriteIsoWeekNumber(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_year, tm.tm_yday, tm.tm_wday); return;
-			case 'W': WriteIsoWeek(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_yday, tm.tm_wday); return;
-			case 'X': WriteTime(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_hour, tm.tm_min, tm.tm_sec); return;
-			case 'Y': WriteLongYear(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_year); return;
-			case 'Z': WriteTZName(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
+			case 'x': WriteMMDDYY(std::forward<af_types::FwdRef<T>>(container), tm.tm_mon, tm.tm_mday, tm.tm_year); return;
+			case 'y': WriteShortYear(std::forward<af_types::FwdRef<T>>(container), tm.tm_year); return;
+			case 'z': WriteUtcOffset(std::forward<af_types::FwdRef<T>>(container)); return;
+			case 'A': WriteLongWeekday(std::forward<af_types::FwdRef<T>>(container), tm.tm_wday); return;
+			case 'B': WriteLongMonth(std::forward<af_types::FwdRef<T>>(container), tm.tm_mon); return;
+			case 'C': WriteTruncatedYear(std::forward<af_types::FwdRef<T>>(container), tm.tm_year); return;
+			case 'F': WriteYYYYMMDD(std::forward<af_types::FwdRef<T>>(container), tm.tm_year, tm.tm_mon, tm.tm_mday); return;
+			case 'G': WriteLongIsoWeekYear(std::forward<af_types::FwdRef<T>>(container), tm.tm_year, tm.tm_yday, tm.tm_wday); return;
+			case 'H': Write24Hour(std::forward<af_types::FwdRef<T>>(container), tm.tm_hour); return;
+			case 'I': Write12Hour(std::forward<af_types::FwdRef<T>>(container), tm.tm_hour); return;
+			case 'M': WriteMinute(std::forward<af_types::FwdRef<T>>(container), tm.tm_min); return;
+			case 'R': Write24HM(std::forward<af_types::FwdRef<T>>(container), tm.tm_hour, tm.tm_min); return;
+			case 'S': WriteSecond(std::forward<af_types::FwdRef<T>>(container), tm.tm_sec); return;
+			case 'T': Write24HourTime(std::forward<af_types::FwdRef<T>>(container), tm.tm_hour, tm.tm_min, tm.tm_sec); return;
+			case 'U': WriteWeek(std::forward<af_types::FwdRef<T>>(container), tm.tm_yday, tm.tm_wday); return;
+			case 'V': WriteIsoWeekNumber(std::forward<af_types::FwdRef<T>>(container), tm.tm_year, tm.tm_yday, tm.tm_wday); return;
+			case 'W': WriteIsoWeek(std::forward<af_types::FwdRef<T>>(container), tm.tm_yday, tm.tm_wday); return;
+			case 'X': WriteTime(std::forward<af_types::FwdRef<T>>(container), tm.tm_hour, tm.tm_min, tm.tm_sec); return;
+			case 'Y': WriteLongYear(std::forward<af_types::FwdRef<T>>(container), tm.tm_year); return;
+			case 'Z': WriteTZName(std::forward<af_types::FwdRef<T>>(container)); return;
 			case 'n': [[fallthrough]];
 			case 't': [[fallthrough]];
 			case '%': [[fallthrough]];
-			default: WriteLiteral(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), timeSpec.timeSpecContainer[ 0 ]); return;
+			default: WriteLiteral(std::forward<af_types::FwdRef<T>>(container), timeSpec.timeSpecContainer[ 0 ]); return;
 		}
 }
 
@@ -2042,20 +2024,20 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatCTime(const std::tm
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleValue(T&& container, const msg_details::SpecType& argType) {
 	using enum msg_details::SpecType;
 	switch( argType ) {
-			case StringType: WriteSimpleString(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
-			case CharPointerType: WriteSimpleCString(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
-			case StringViewType: WriteSimpleStringView(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
-			case IntType: WriteSimpleInt(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
-			case U_IntType: WriteSimpleUInt(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
-			case LongLongType: WriteSimpleLongLong(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
-			case U_LongLongType: WriteSimpleULongLong(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
-			case BoolType: WriteSimpleBool(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
+			case StringType: WriteSimpleString(std::forward<af_types::FwdRef<T>>(container)); return;
+			case CharPointerType: WriteSimpleCString(std::forward<af_types::FwdRef<T>>(container)); return;
+			case StringViewType: WriteSimpleStringView(std::forward<af_types::FwdRef<T>>(container)); return;
+			case IntType: WriteSimpleInt(std::forward<af_types::FwdRef<T>>(container)); return;
+			case U_IntType: WriteSimpleUInt(std::forward<af_types::FwdRef<T>>(container)); return;
+			case LongLongType: WriteSimpleLongLong(std::forward<af_types::FwdRef<T>>(container)); return;
+			case U_LongLongType: WriteSimpleULongLong(std::forward<af_types::FwdRef<T>>(container)); return;
+			case BoolType: WriteSimpleBool(std::forward<af_types::FwdRef<T>>(container)); return;
 			case CharType: container.insert(container.end(), argStorage.char_state(specValues.argPosition)); return;
-			case FloatType: WriteSimpleFloat(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
-			case DoubleType: WriteSimpleDouble(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
-			case LongDoubleType: WriteSimpleLongDouble(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
-			case ConstVoidPtrType: WriteSimpleConstVoidPtr(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
-			case VoidPtrType: WriteSimpleVoidPtr(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container)); return;
+			case FloatType: WriteSimpleFloat(std::forward<af_types::FwdRef<T>>(container)); return;
+			case DoubleType: WriteSimpleDouble(std::forward<af_types::FwdRef<T>>(container)); return;
+			case LongDoubleType: WriteSimpleLongDouble(std::forward<af_types::FwdRef<T>>(container)); return;
+			case ConstVoidPtrType: WriteSimpleConstVoidPtr(std::forward<af_types::FwdRef<T>>(container)); return;
+			case VoidPtrType: WriteSimpleVoidPtr(std::forward<af_types::FwdRef<T>>(container)); return;
 			default: return;
 		}
 }
@@ -2259,7 +2241,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatIntegerType(T&& val
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::FormatStringType(T&& container, std::string_view val, const int& precision) {
 	int size { static_cast<int>(val.size()) };
-	using CharType = typename internal_helper::af_typedefs::type<T>::value_type;
+	using CharType = typename af_types::type<T>::value_type;
 	if constexpr( std::is_same_v<CharType, char> ) {
 			FlushBuffer(val, precision, std::forward<T>(container));
 	} else if constexpr( std::is_same_v<CharType, char16_t> || (std::is_same_v<CharType, wchar_t> && sizeof(wchar_t) == 2) ) {
@@ -2282,12 +2264,10 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Writ
 	using enum msg_details::SpecType;
 	switch( type ) {
 			case StringViewType:
-				return FormatStringType(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.string_view_state(specValues.argPosition),
-				                        precision);
-			case StringType:
-				return FormatStringType(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.string_state(specValues.argPosition), precision);
+				return FormatStringType(std::forward<af_types::FwdRef<T>>(container), argStorage.string_view_state(specValues.argPosition), precision);
+			case StringType: return FormatStringType(std::forward<af_types::FwdRef<T>>(container), argStorage.string_state(specValues.argPosition), precision);
 			case CharPointerType:
-				return FormatStringType(std::forward<internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.c_string_state(specValues.argPosition), precision);
+				return FormatStringType(std::forward<af_types::FwdRef<T>>(container), argStorage.c_string_state(specValues.argPosition), precision);
 			default: return;
 		}
 }
