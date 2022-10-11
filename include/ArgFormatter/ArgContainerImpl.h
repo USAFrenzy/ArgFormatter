@@ -226,7 +226,7 @@ namespace formatter::msg_details {
 		AF_ASSERT(index <= MAX_ARG_INDEX, "Error Retrieving Stored Value - Index Is Out Of Bounds");
 		// clang-format off
 		AF_ASSERT(std::holds_alternative<formatter::internal_helper::CustomValue>(argContainer[index]),
-			"Error Retrieving custom value af_types::type: Variant At Index Provided Doesn't Contain This Type.");
+			"Error Retrieving custom value type: Variant At Index Provided Doesn't Contain This Type.");
 		// clang-format on
 		return *std::get_if<16>(&argContainer[ index ]);
 	}
