@@ -5,9 +5,7 @@
 namespace formatter::msg_details {
 #include "ArgContainer.h"
 
-	namespace af_types = formatter::internal_helper::af_typedefs;
-
-	constexpr std::array<af_types::VType, MAX_ARG_COUNT>& ArgContainer::ArgStorage() {
+	constexpr std::array<formatter::internal_helper::af_typedefs::VType, MAX_ARG_COUNT>& ArgContainer::ArgStorage() {
 		return argContainer;
 	}
 
@@ -22,14 +20,17 @@ namespace formatter::msg_details {
 	}
 
 	template<typename T> constexpr void ArgContainer::StoreNativeArg(T&& value) {
-		if constexpr( is_supported_ptr_type_v<T> || std::is_same_v<af_types::type<T>, std::string> ) {
-				if constexpr( std::is_same_v<af_types::type<T>, std::tm*> ) {
-						argContainer[ counter ] = std::forward<af_types::FwdRef<T>>(af_types::FwdRef<T>(*value));
+		if constexpr( formatter::internal_helper::af_concepts::is_supported_ptr_type_v<T> ||
+		              std::is_same_v<formatter::internal_helper::af_typedefs::type<T>, std::string> ) {
+				if constexpr( std::is_same_v<formatter::internal_helper::af_typedefs::type<T>, std::tm*> ) {
+						argContainer[ counter ] =
+						std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(formatter::internal_helper::af_typedefs::FwdRef<T>(*value));
 				} else {
-						argContainer[ counter ] = std::forward<af_types::type<T>>(af_types::type<T>(value));
+						argContainer[ counter ] =
+						std::forward<formatter::internal_helper::af_typedefs::type<T>>(formatter::internal_helper::af_typedefs::type<T>(value));
 					}
 		} else {
-				argContainer[ counter ] = std::forward<af_types::FwdRef<T>>(af_types::FwdRef<T>(value));
+				argContainer[ counter ] = std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(formatter::internal_helper::af_typedefs::FwdRef<T>(value));
 			}
 	}
 
@@ -46,7 +47,8 @@ namespace formatter::msg_details {
 							case utf8_bom: [[fallthrough]];
 							case utf8_no_bom:
 								{
-									if constexpr( std::is_same_v<typename af_types::type<ArgType>::value_type, unsigned char> && std::is_signed_v<char> ) {
+									if constexpr( std::is_same_v<typename formatter::internal_helper::af_typedefs::type<ArgType>::value_type, unsigned char> &&
+									              std::is_signed_v<char> ) {
 											std::string tmp;
 											tmp.reserve(arg.size());
 											for( auto& ch: arg ) {
@@ -60,7 +62,7 @@ namespace formatter::msg_details {
 													specContainer[ counter ] = SpecType::StringViewType;
 												}
 									} else {
-											using remove_ref        = af_types::type<decltype(arg)>;
+											using remove_ref        = formatter::internal_helper::af_typedefs::type<decltype(arg)>;
 											argContainer[ counter ] = remove_ref(arg);
 											if constexpr( utf_constraints::is_string_v<ArgType> ) {
 													specContainer[ counter ] = SpecType::StringType;
@@ -107,16 +109,19 @@ namespace formatter::msg_details {
 					++counter;
 					AF_ASSERT(counter < MAX_ARG_COUNT, "Too Many Arguments Supplied To Formatting Function");
 			} else {
-					specContainer[ counter ] = GetArgType(std::forward<af_types::FwdRef<ArgType>>(af_types::FwdRef<ArgType>(arg)));
-					if constexpr( is_supported_v<af_types::type<ArgType>> ) {
-							StoreNativeArg(std::forward<af_types::FwdRef<ArgType>>(af_types::FwdRef<ArgType>(arg)));
+					specContainer[ counter ] =
+					GetArgType(std::forward<formatter::internal_helper::af_typedefs::FwdRef<ArgType>>(formatter::internal_helper::af_typedefs::FwdRef<ArgType>(arg)));
+					if constexpr( formatter::internal_helper::af_concepts::is_supported_v<formatter::internal_helper::af_typedefs::type<ArgType>> ) {
+							StoreNativeArg(
+							std::forward<formatter::internal_helper::af_typedefs::FwdRef<ArgType>>(formatter::internal_helper::af_typedefs::FwdRef<ArgType>(arg)));
 					} else {
-							iter = std::move(StoreCustomArg(std::move(iter), std::forward<af_types::FwdRef<ArgType>>(af_types::FwdRef<ArgType>(arg))));
+							iter = std::move(StoreCustomArg(std::move(iter), std::forward<formatter::internal_helper::af_typedefs::FwdRef<ArgType>>(
+																			 formatter::internal_helper::af_typedefs::FwdRef<ArgType>(arg))));
 						}
 					++counter;
 					AF_ASSERT(counter < MAX_ARG_COUNT, "Too Many Arguments Supplied To Formatting Function");
 				}
-		}(std::forward<af_types::FwdRef<Args>>(af_types::FwdRef<Args>(args)), std::move(iter)),
+		}(std::forward<formatter::internal_helper::af_typedefs::FwdRef<Args>>(formatter::internal_helper::af_typedefs::FwdRef<Args>(args)), std::move(iter)),
 		...);
 		return std::move(iter);
 	}

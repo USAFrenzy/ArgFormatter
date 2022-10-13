@@ -1,11 +1,19 @@
-set(PROJECT_NAME Formatter_Tests)
+cmake_minimum_required(VERSION 3.14)
+
+set(PROJECT_NAME Formatting_Tests)
 
 message("-- Building ${PROJECT_NAME}" )
 
-set(TEST_SOURCE_FILES "tests.cpp")
+set(TEST_SOURCE_FILES 
+main.cpp
+FormatTest.cpp
+)
 
 add_executable(${PROJECT_NAME} ${TEST_SOURCE_FILES})
 
 set(STANDARD 20)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD ${STANDARD})
+
+add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+set_tests_properties(${PROJECT_NAME} PROPERTIES RUN_SERIAL ON)

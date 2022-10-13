@@ -6,6 +6,8 @@
 #include <variant>
 #include <vector>
 
+namespace formatter {
+
 #ifdef _DEBUG
 	#ifndef AF_ASSERT
 		#define AF_ASSERT(condition, message)                                                                                                                       \
@@ -19,8 +21,6 @@
 		#define AF_ASSERT(condition, message) void(0)
 	#endif
 #endif
-
-namespace formatter {
 
 	// convenience typedefs
 	namespace internal_helper::af_typedefs {
@@ -244,12 +244,11 @@ namespace formatter::msg_details {
 		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::tm> ) {
 				return std::forward<SpecType>(CTimeType);
 		} else {
-				static_assert(internal_helper::af_concepts::is_formattable_v<internal_helper::af_typedefs::type<T>>, "A Template Specialization Must Exist For A "
-				                                                                                                     "Custom Type Argument.\n\t"
-				                                                                                                     "For ArgFormatter, This Can Be Done By "
-				                                                                                                     "Specializing The CustomFormatter "
-				                                                                                                     "Template For Your Type And Implementing The "
-				                                                                                                     "Parse() And Format() Functions.");
+				namespace con = internal_helper::af_concepts;
+				// clang-format off
+				static_assert(con::is_formattable_v<con::type<T>>, "A Template Specialization Must Exist For A Custom Type Argument.\n\t For ArgFormatter, This Can Be "
+				                                                   "Done By Specializing The CustomFormatter Template For Your Type And Implementing The Parse() And Format() Functions.");
+				// clang-format on
 				return std::forward<SpecType>(CustomType);
 			}
 	}
