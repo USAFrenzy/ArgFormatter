@@ -23,8 +23,6 @@ static char l = 'm';
 const void* m = static_cast<const void*>(&a);
 void* n       = static_cast<void*>(&b);
 
-// NOTE: Currently I have yet to add custom formatting
-
 TEST_CASE("Base Auto Index Formatting") {
 	ArgFormatter formatter;
 
@@ -416,8 +414,6 @@ TEST_CASE("Format Function Test") {
 	std::string stdStr, argFmtStr;
 	constexpr std::string_view fmt { "{0:*^#{1}x}" };
 
-	// Once appveyor supports the new update in VS 16.14/16.15 then this macro can dissapear. Build is failing
-	// when using the normal std::vformat_to() due to how it used to work before the back-ported fixes to <format>
 	VFORMAT_TO(stdStr, loc, fmt, a, width);
 	formatter.se_format_to(std::back_inserter(argFmtStr), loc, fmt, a, width);
 	REQUIRE(std::format(fmt, a, width) == formatter.se_format(fmt, a, width));
