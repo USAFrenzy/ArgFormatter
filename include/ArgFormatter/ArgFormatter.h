@@ -233,10 +233,10 @@ namespace formatter::arg_formatter {
 		constexpr ~ArgFormatter()                              = default;
 
 		// clang-format off
-		template<typename T, typename... Args> constexpr void se_format_to(std::back_insert_iterator<T>&& Iter, const std::locale& loc, std::string_view sv, Args&&... args);
-		template<typename T, typename... Args> constexpr void se_format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args);
-		template<typename... Args> [[nodiscard]] std::string se_format(const std::locale& locale, std::string_view sv, Args&&... args);
-		template<typename... Args> [[nodiscard]] std::string se_format(std::string_view sv, Args&&... args);
+		template<typename T, typename... Args> constexpr void format_to(std::back_insert_iterator<T>&& Iter, const std::locale& loc, std::string_view sv, Args&&... args);
+		template<typename T, typename... Args> constexpr void format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args);
+		template<typename... Args> [[nodiscard]] std::string format(const std::locale& locale, std::string_view sv, Args&&... args);
+		template<typename... Args> [[nodiscard]] std::string format(std::string_view sv, Args&&... args);
 		// clang-format on
 
 	  private:
@@ -424,25 +424,25 @@ namespace formatter {
 	}    // namespace globals
 
 	template<typename T, typename... Args> static constexpr void format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args) {
-		globals::staticFormatter->se_format_to(std::forward<formatter::internal_helper::af_typedefs::FwdMoveIter<T>>(Iter), sv, std::forward<Args>(args)...);
+		globals::staticFormatter->format_to(std::forward<formatter::internal_helper::af_typedefs::FwdMoveIter<T>>(Iter), sv, std::forward<Args>(args)...);
 	}
 
 	template<typename T, typename... Args>
 	static constexpr void format_to(std::back_insert_iterator<T>&& Iter, const std::locale& locale, std::string_view sv, Args&&... args) {
-		globals::staticFormatter->se_format_to(std::forward<formatter::internal_helper::af_typedefs::FwdMoveIter<T>>(Iter), locale, sv, std::forward<Args>(args)...);
+		globals::staticFormatter->format_to(std::forward<formatter::internal_helper::af_typedefs::FwdMoveIter<T>>(Iter), locale, sv, std::forward<Args>(args)...);
 	}
 
 	template<typename... Args> [[nodiscard]] static std::string format(std::string_view sv, Args&&... args) {
 		std::string tmp;
 		tmp.reserve(formatter::arg_formatter::ReserveCapacity(std::forward<Args>(args)...));
-		globals::staticFormatter->se_format_to(std::back_inserter(tmp), sv, std::forward<Args>(args)...);
+		globals::staticFormatter->format_to(std::back_inserter(tmp), sv, std::forward<Args>(args)...);
 		return tmp;
 	}
 
 	template<typename... Args> [[nodiscard]] static std::string format(const std::locale& locale, std::string_view sv, Args&&... args) {
 		std::string tmp;
 		tmp.reserve(formatter::arg_formatter::ReserveCapacity(std::forward<Args>(args)...));
-		globals::staticFormatter->se_format_to(std::back_inserter(tmp), locale, sv, std::forward<Args>(args)...);
+		globals::staticFormatter->format_to(std::back_inserter(tmp), locale, sv, std::forward<Args>(args)...);
 		return tmp;
 	}
 

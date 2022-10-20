@@ -438,26 +438,26 @@ template<typename Iter, typename... Args> constexpr auto formatter::arg_formatte
 }
 
 template<typename T, typename... Args>
-constexpr void formatter::arg_formatter::ArgFormatter::se_format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args) {
+constexpr void formatter::arg_formatter::ArgFormatter::format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args) {
 	ParseFormatString(std::move(CaptureArgs(std::move(Iter), std::forward<Args>(args)...)), sv);
 }
 
 template<typename T, typename... Args>
-constexpr void formatter::arg_formatter::ArgFormatter::se_format_to(std::back_insert_iterator<T>&& Iter, const std::locale& loc, std::string_view sv, Args&&... args) {
+constexpr void formatter::arg_formatter::ArgFormatter::format_to(std::back_insert_iterator<T>&& Iter, const std::locale& loc, std::string_view sv, Args&&... args) {
 	ParseFormatString(std::move(CaptureArgs(std::move(Iter), std::forward<Args>(args)...)), loc, sv);
 }
 
-template<typename... Args> std::string formatter::arg_formatter::ArgFormatter::se_format(std::string_view sv, Args&&... args) {
+template<typename... Args> std::string formatter::arg_formatter::ArgFormatter::format(std::string_view sv, Args&&... args) {
 	std::string tmp;
 	tmp.reserve(ReserveCapacity(std::forward<Args>(args)...));
-	se_format_to(std::back_inserter(tmp), sv, std::forward<Args>(args)...);
+	format_to(std::back_inserter(tmp), sv, std::forward<Args>(args)...);
 	return tmp;
 }
 
-template<typename... Args> std::string formatter::arg_formatter::ArgFormatter::se_format(const std::locale& loc, std::string_view sv, Args&&... args) {
+template<typename... Args> std::string formatter::arg_formatter::ArgFormatter::format(const std::locale& loc, std::string_view sv, Args&&... args) {
 	std::string tmp;
 	tmp.reserve(ReserveCapacity(std::forward<Args>(args)...));
-	se_format_to(std::back_inserter(tmp), loc, sv, std::forward<Args>(args)...);
+	format_to(std::back_inserter(tmp), loc, sv, std::forward<Args>(args)...);
 	return tmp;
 }
 
