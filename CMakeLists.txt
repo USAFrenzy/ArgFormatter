@@ -17,9 +17,18 @@ option(
 option(
     BUILD_ALL
     "Build Tests and Sandbox Projects Alongside The Library"
+    OFF
+)
+
+option(
+    BUILD_COMPILED_LIB
+    "Build The ArgFormatter Library As A Compiled Library To Link Against"
     ON
 )
 
+if (BUILD_COMPILED_LIB)
+    add_subdirectory(src)
+endif ()
 
 if (BUILD_SANDBOX)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/sandbox ${CMAKE_CURRENT_BINARY_DIR}/sandbox)
