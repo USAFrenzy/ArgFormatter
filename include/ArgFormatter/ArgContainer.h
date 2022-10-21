@@ -106,8 +106,8 @@ namespace formatter {
 	}    // namespace internal_helper
 	namespace internal_helper::af_typedefs {
 		// clang-format off
-	using VType = std::variant<std::monostate, std::string, const char*, std::string_view, int, unsigned int, long long,
-		unsigned long long, bool, char, float, double, long double, const void*, void*, std::tm, internal_helper::CustomValue>;
+		using VType = std::variant<std::monostate, std::string, const char*, std::string_view, int, unsigned int, long long,
+			unsigned long long, bool, char, float, double, long double, const void*, void*, std::tm, internal_helper::CustomValue>;
 		// clang-format on
 	}    // namespace internal_helper::af_typedefs
 
@@ -244,10 +244,10 @@ namespace formatter::msg_details {
 		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::tm> ) {
 				return std::forward<SpecType>(CTimeType);
 		} else {
-				namespace con = internal_helper::af_concepts;
 				// clang-format off
-				static_assert(con::is_formattable_v<con::type<T>>, "A Template Specialization Must Exist For A Custom Type Argument.\n\t For ArgFormatter, This Can Be "
-				                                                   "Done By Specializing The CustomFormatter Template For Your Type And Implementing The Parse() And Format() Functions.");
+			static_assert(internal_helper::af_concepts::is_formattable_v<internal_helper::af_typedefs::type<T>>,
+				"A Template Specialization Must Exist For A Custom Type Argument.\n\t For ArgFormatter, This Can Be Done By "
+				"Specializing The CustomFormatter Template For Your Type And Implementing The Parse() And Format() Functions.");
 				// clang-format on
 				return std::forward<SpecType>(CustomType);
 			}

@@ -18,8 +18,9 @@ namespace formatter::msg_details {
 	}
 
 	template<typename Iter, typename T> constexpr auto ArgContainer::StoreCustomArg(Iter&& iter, T&& value) -> decltype(iter) {
-		argContainer[ counter ] =
-		CustomValue(IteratorAccessHelper(std::remove_reference_t<decltype(iter)>(iter)).Container(), std::forward<FwdConstRef<T>>(FwdConstRef<T>(value)));
+		using namespace formatter::internal_helper;
+		argContainer[ counter ] = CustomValue(IteratorAccessHelper(std::remove_reference_t<decltype(iter)>(iter)).Container(),
+		                                      std::forward<af_typedefs::FwdConstRef<T>>(af_typedefs::FwdConstRef<T>(value)));
 		return std::move(std::add_rvalue_reference_t<decltype(iter)>(iter));
 	}
 
