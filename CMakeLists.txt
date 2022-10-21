@@ -23,7 +23,7 @@ option(
 option(
     BUILD_COMPILED_LIB
     "Build The ArgFormatter Library As A Compiled Library To Link Against"
-    ON
+    OFF
 )
 
 if (BUILD_COMPILED_LIB)
