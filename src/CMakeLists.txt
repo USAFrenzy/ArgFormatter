@@ -7,7 +7,6 @@ set(ARG_FMT_HEADERS
 "../include/ArgFormatter/ArgContainerImpl.h"
 "../include/ArgFormatter/ArgFormatter.h"
 "../include/ArgFormatter/ArgFormatterImpl.h"
-"../include/ArgFormatter/dependancies/UTF-Utils/utf-utils.h"
 )
 
 set(ARG_FMT_SOURCES "AF_Compiled.cpp")

@@ -27,20 +27,32 @@ option(
 )
 
 if (BUILD_COMPILED_LIB)
+    add_compile_definitions(COMPILED_LIBRARY)
     add_subdirectory(src)
 endif ()
 
 include(${CMAKE_SOURCE_DIR}/cmake/CPM.cmake)
-cpmaddpackage(
-    NAME
-    utfutils
-    GITHUB_REPOSITORY
-    USAFrenzy/UTF-Utils
-    VERSION
-    1.0.0
-    OPTIONS
-    "BUILD_COMPILED_LIBRARY On"
-)
+if (BUILD_COMPILED_LIB)
+    cpmaddpackage(
+        NAME
+        utfutils
+        GITHUB_REPOSITORY
+        USAFrenzy/UTF-Utils
+        VERSION
+        1.0.0
+        OPTIONS
+        "BUILD_COMPILED_LIBRARY On"
+    )
+else ()
+    cpmaddpackage(
+        NAME
+        utfutils
+        GITHUB_REPOSITORY
+        USAFrenzy/UTF-Utils
+        VERSION
+        1.0.0
+    )
+endif ()
 
 if (utfutils_ADDED)
     file(
@@ -51,10 +63,17 @@ if (utfutils_ADDED)
     add_library(utfutils STATIC ${UTFUTILS_SOURCES})
     set(STANDARD 20)
     set_target_properties(utfutils PROPERTIES CXX_STANDARD ${STANDARD})
-    target_include_directories(utfutils PUBLIC $<BUILD_INTERFACE:${utfutils_SOURCE_DIR}>)
-    if(BUILD_COMPILED_LIB)
-    target_link_libraries(ArgFormatter_Lib utfutils)
-    endif()
+    target_include_directories(utfutils PUBLIC $<BUILD_INTERFACE:${utfutils_SOURCE_DIR}/include>)
+    if (BUILD_COMPILED_LIB)
+        target_include_directories(
+            ArgFormatter_Lib PUBLIC $<BUILD_INTERFACE:${utfutils_SOURCE_DIR}/include>
+        )
+        target_link_libraries(ArgFormatter_Lib utfutils)
+    else ()
+        file(COPY ${utfutils_SOURCE_DIR}/include/UTF-Utils
+             DESTINATION ${CMAKE_SOURCE_DIR}/include/ArgFormatter/dependencies
+        )
+    endif ()
 endif ()
 
 if (BUILD_SANDBOX)

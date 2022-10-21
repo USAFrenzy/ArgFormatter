@@ -1,3 +1,0 @@
-[submodule "include/ArgFormatter/dependancies/UTF-Utils"]
-	path = include/ArgFormatter/dependancies/UTF-Utils
-	url = https://github.com/USAFrenzy/UTF-Utils.git

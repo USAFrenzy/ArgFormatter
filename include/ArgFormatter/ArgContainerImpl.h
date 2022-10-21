@@ -1,6 +1,10 @@
 #pragma once
 
-#include "dependancies/UTF-Utils/utf-utils.h"
+#ifndef COMPILED_LIBRARY
+	#include "dependencies/UTF-Utils/utf-utils.h"
+#else
+	#include <UTF-Utils/utf-utils.h>
+#endif    // !BUILD_COMPILED_LIBRARY
 
 namespace formatter::msg_details {
 #include "ArgContainer.h"
