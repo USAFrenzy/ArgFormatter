@@ -30,6 +30,33 @@ if (BUILD_COMPILED_LIB)
     add_subdirectory(src)
 endif ()
 
+include(${CMAKE_SOURCE_DIR}/cmake/CPM.cmake)
+cpmaddpackage(
+    NAME
+    utfutils
+    GITHUB_REPOSITORY
+    USAFrenzy/UTF-Utils
+    VERSION
+    1.0.0
+    OPTIONS
+    "BUILD_COMPILED_LIBRARY On"
+)
+
+if (utfutils_ADDED)
+    file(
+        GLOB
+        UTFUTILS_SOURCES
+        ${utfutils_SOURCE_DIR}/src/*.cpp
+    )
+    add_library(utfutils STATIC ${UTFUTILS_SOURCES})
+    set(STANDARD 20)
+    set_target_properties(utfutils PROPERTIES CXX_STANDARD ${STANDARD})
+    target_include_directories(utfutils PUBLIC $<BUILD_INTERFACE:${utfutils_SOURCE_DIR}>)
+    if(BUILD_COMPILED_LIB)
+    target_link_libraries(ArgFormatter_Lib utfutils)
+    endif()
+endif ()
+
 if (BUILD_SANDBOX)
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/sandbox ${CMAKE_CURRENT_BINARY_DIR}/sandbox)
     set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT Sandbox_Environment)
