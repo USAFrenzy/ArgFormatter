@@ -29,6 +29,8 @@ option(
 if (BUILD_COMPILED_LIB)
     add_compile_definitions(COMPILED_LIBRARY)
     add_subdirectory(src)
+elseif (COMMAND COMPILED_LIBRARY)
+    remove_definitions(COMPILED_LIBRARY)
 endif ()
 
 include(${CMAKE_SOURCE_DIR}/cmake/CPM.cmake)
