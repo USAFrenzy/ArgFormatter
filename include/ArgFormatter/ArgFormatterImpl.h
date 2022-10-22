@@ -164,25 +164,25 @@ inline void formatter::arg_formatter::ArgFormatter::FormatIntegralGrouping(const
 inline void formatter::arg_formatter::ArgFormatter::LocalizeArgument(const std::locale& loc, const int& precision, const int& totalWidth, const SpecType& type) {
 	using enum formatter::msg_details::SpecType;
 	// NOTE: The following types should have been caught in the verification process:  monostate, string, c-string, string view, const void*, void *
-	switch (type) {
-	case IntType: [[fallthrough]];
-	case U_IntType: [[fallthrough]];
-	case LongLongType: LocalizeIntegral(loc, precision, totalWidth, type); break;
-	case FloatType: [[fallthrough]];
-	case DoubleType: [[fallthrough]];
-	case LongDoubleType: [[fallthrough]];
-	case U_LongLongType: LocalizeFloatingPoint(loc, precision, totalWidth, type); break;
-	case BoolType: LocalizeBool(loc); break;
-	}
+	switch( type ) {
+			case IntType: [[fallthrough]];
+			case U_IntType: [[fallthrough]];
+			case LongLongType: LocalizeIntegral(loc, precision, totalWidth, type); break;
+			case FloatType: [[fallthrough]];
+			case DoubleType: [[fallthrough]];
+			case LongDoubleType: [[fallthrough]];
+			case U_LongLongType: LocalizeFloatingPoint(loc, precision, totalWidth, type); break;
+			case BoolType: LocalizeBool(loc); break;
+		}
 	// should re-work this a little so using the unsigned buffer isn't totally neccessary if not needed, however, WriteBufferToContainer() & FlushBuffer()
 	// use the unsigned buffer at the moment when localization is set , so the contents of the original buffer need to be copied over to the unsigned buffer
-	auto pos{ -1 };
-	auto& locBuff{ timeSpec.localizationBuff };
+	auto pos { -1 };
+	auto& locBuff { timeSpec.localizationBuff };
 	locBuff.resize(valueSize);
-	for (;; ) {
-		if (++pos >= valueSize) return;
-		locBuff[pos] = static_cast<unsigned char>(buffer[pos]);
-	}
+	for( ;; ) {
+			if( ++pos >= valueSize ) return;
+			locBuff[ pos ] = static_cast<unsigned char>(buffer[ pos ]);
+		}
 }
 
 inline void formatter::arg_formatter::ArgFormatter::LocalizeIntegral(const std::locale& loc, const int& precision, const int& totalWidth, const SpecType& type) {
@@ -192,142 +192,139 @@ inline void formatter::arg_formatter::ArgFormatter::LocalizeIntegral(const std::
 
 inline void formatter::arg_formatter::ArgFormatter::LocalizeFloatingPoint(const std::locale& loc, const int& precision, const int& totalWidth, const SpecType& type) {
 	FormatArgument(precision, totalWidth, type);
-	size_t pos{ 0 };
-	bool hasMantissa{ false };
-	for (;; ) {
-		if (pos >= valueSize) break;
-		if (buffer[pos] == '.') {
-			hasMantissa = true;
-			FormatIntegralGrouping(loc, pos);
-			buffer[pos++] = std::use_facet<std::numpunct<char>>(loc).decimal_point();
-			break;
+	size_t pos { 0 };
+	bool hasMantissa { false };
+	for( ;; ) {
+			if( pos >= valueSize ) break;
+			if( buffer[ pos ] == '.' ) {
+					hasMantissa = true;
+					FormatIntegralGrouping(loc, pos);
+					buffer[ pos++ ] = std::use_facet<std::numpunct<char>>(loc).decimal_point();
+					break;
+			}
+			++pos;
 		}
-		++pos;
-	}
-	if (!hasMantissa) {
-		FormatIntegralGrouping(loc, valueSize);
+	if( !hasMantissa ) {
+			FormatIntegralGrouping(loc, valueSize);
 	}
 }
 
 inline void formatter::arg_formatter::ArgFormatter::LocalizeCTime(const std::locale& loc, std::tm& timeStruct, const int& precision) {
 	using namespace utf_utils;
 
-	auto end{ timeSpec.timeSpecCounter };
+	auto end { timeSpec.timeSpecCounter };
 	// If the locale matches any of the below, they're taken care of by standard formatting via FormatCTime()
-	if (auto name{ loc.name() }; name == "" || name == "C" || name == "en_US" || name == "en_US.UTF8") {
-		specValues.localize = false;    // set to false so that when writing to the container, it doesn't call the localization buffer
-		return FormatCTime(timeStruct, precision, 0, end);
+	if( auto name { loc.name() }; name == "" || name == "C" || name == "en_US" || name == "en_US.UTF8" ) {
+			specValues.localize = false;    // set to false so that when writing to the container, it doesn't call the localization buffer
+			return FormatCTime(timeStruct, precision, 0, end);
 	}
 	// Due to major shifts over to little endian back in the early 2000's, this is making the assumption that the system is LE and NOT BE.
 	AF_ASSERT(utf_utils::IsLittleEndian(), "Big Endian Format Is Currently Unsupported. If Support Is Neccessary, Please Open A New Issue At "
-		"'https://github.com/USAFrenzy/ArgFormatter/issues'");
+	                                       "'https://github.com/USAFrenzy/ArgFormatter/issues'");
 	static std::basic_ostringstream<u_wchar> localeStream;
-	auto pos{ -1 };
-	auto format{ timeSpec.timeSpecFormat };
-	auto& cont{ timeSpec.timeSpecContainer };
+	auto pos { -1 };
+	auto format { timeSpec.timeSpecFormat };
+	auto& cont { timeSpec.timeSpecContainer };
 	u_wstring localeFmt;
 	localeFmt.reserve(cont.size() * 2);
-	for (;; ) {
-		if (++pos >= end) break;
-		if (cont[pos] != ' ') {
-			localeFmt += '%';
-			format[pos] == LocaleFormat::standard ? localeFmt.append(1, cont[pos]) : localeFmt.append(LocalizedFormat(cont[pos]));
+	for( ;; ) {
+			if( ++pos >= end ) break;
+			if( cont[ pos ] != ' ' ) {
+					localeFmt += '%';
+					format[ pos ] == LocaleFormat::standard ? localeFmt.append(1, cont[ pos ]) : localeFmt.append(LocalizedFormat(cont[ pos ]));
+			} else {
+					localeFmt.append(1, ' ');
+				}
 		}
-		else {
-			localeFmt.append(1, ' ');
-		}
-	}
-	localeStream.str(u_wstring{});
+	localeStream.str(u_wstring {});
 	localeStream.clear();
 	localeStream.imbue(loc);
 	localeStream << std::put_time<u_wchar>(&timeStruct, localeFmt.data());
-	if constexpr (sizeof(u_wchar) == 2) {
-		U16ToU8(std::move(localeStream.str()), timeSpec.localizationBuff, valueSize);
-	}
-	else {
-		U32ToU8(std::move(localeStream.str()), timeSpec.localizationBuff, valueSize);
-	}
+	if constexpr( sizeof(u_wchar) == 2 ) {
+			U16ToU8(std::move(localeStream.str()), timeSpec.localizationBuff, valueSize);
+	} else {
+			U32ToU8(std::move(localeStream.str()), timeSpec.localizationBuff, valueSize);
+		}
 }
 
 inline void formatter::arg_formatter::ArgFormatter::FormatSubseconds(int precision) {
-	auto begin{ buffer.data() };
-	auto subSeconds{ std::chrono::time_point_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now()).time_since_epoch().count() };
-	if (!specValues.localize) {
-		buffer[valueSize++] = '.';
-		std::to_chars(begin + valueSize, begin + AF_ARG_BUFFER_SIZE, subSeconds);
+	auto begin { buffer.data() };
+	auto subSeconds { std::chrono::time_point_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now()).time_since_epoch().count() };
+	if( !specValues.localize ) {
+			buffer[ valueSize++ ] = '.';
+			std::to_chars(begin + valueSize, begin + AF_ARG_BUFFER_SIZE, subSeconds);
 	}
 	valueSize += precision;
 }
 
 inline void formatter::arg_formatter::ArgFormatter::FormatUtcOffset() {
-	auto& utcOffset{ formatter::globals::UtcOffset() };
-	auto hours{ std::chrono::duration_cast<std::chrono::hours>(utcOffset).count() };
-	if (hours < 0) hours *= -1;
-	auto min{ static_cast<int>(hours * 0.166f) };
-	if (!specValues.localize) {
-		buffer[valueSize++] = (utcOffset.count() >= 0) ? '+' : '-';
+	auto& utcOffset { formatter::globals::UtcOffset() };
+	auto hours { std::chrono::duration_cast<std::chrono::hours>(utcOffset).count() };
+	if( hours < 0 ) hours *= -1;
+	auto min { static_cast<int>(hours * 0.166f) };
+	if( !specValues.localize ) {
+			buffer[ valueSize++ ] = (utcOffset.count() >= 0) ? '+' : '-';
 	}
 	Format24HM(hours, min);
 }
 
 inline void formatter::arg_formatter::ArgFormatter::FormatTZName() {
-	std::string_view name{ formatter::globals::TZInfo().abbrev };
-	auto size{ name.size() };
-	int pos{};
-	for (;; ) {
-		buffer[valueSize++] = name[pos];
-		if (++pos >= size) return;
-	}
+	std::string_view name { formatter::globals::TZInfo().abbrev };
+	auto size { name.size() };
+	int pos {};
+	for( ;; ) {
+			buffer[ valueSize++ ] = name[ pos ];
+			if( ++pos >= size ) return;
+		}
 }
 
 template<typename T> struct is_basic_char_buff;
 template<typename T>
 struct is_basic_char_buff
 	: std::bool_constant<std::is_same_v<formatter::internal_helper::af_typedefs::type<T>, std::array<char, formatter::arg_formatter::AF_ARG_BUFFER_SIZE>> ||
-	std::is_same_v<formatter::internal_helper::af_typedefs::type<T>, std::vector<unsigned char>> ||
-	std::is_same_v<formatter::internal_helper::af_typedefs::type<T>, std::vector<char>>>
+                         std::is_same_v<formatter::internal_helper::af_typedefs::type<T>, std::vector<unsigned char>> ||
+                         std::is_same_v<formatter::internal_helper::af_typedefs::type<T>, std::vector<char>>>
 {
 };
 template<typename T> inline constexpr bool is_basic_char_buff_v = is_basic_char_buff<T>::value;
 
 //  offset used to get the decimal value represented in this use case (same as '0' but faster by a few nanoseconds for direct operations involving this)
-static constexpr int NumericalAsciiOffset{ 48 };
+static constexpr int NumericalAsciiOffset { 48 };
 // Only handles a max of two digits and foregoes any real safety checks but is faster than std::from_chars in regards to its usage in VerifyPositionField()
 // by ~38% when compiled with -02. For reference std::from_chars() averaged ~2.1ns and se_from_chars() averages ~1.3ns for this specific use case.
 template<typename IntergralType>
 requires std::is_integral_v<std::remove_cvref_t<IntergralType>>
 static constexpr size_t se_from_chars(const char* begin, const char* end, IntergralType&& value) {
-	for (;; ) {
-		if (!IsDigit(*begin)) {
-			if (++begin == end) return 0;
+	for( ;; ) {
+			if( !IsDigit(*begin) ) {
+					if( ++begin == end ) return 0;
+			}
+			value = *begin - NumericalAsciiOffset;
+			if( !IsDigit(*(++begin)) ) return 1;
+			(value *= 10) += (*begin - NumericalAsciiOffset);
+			return 2;
 		}
-		value = *begin - NumericalAsciiOffset;
-		if (!IsDigit(*(++begin))) return 1;
-		(value *= 10) += (*begin - NumericalAsciiOffset);
-		return 2;
-	}
 }
 
-constexpr auto fillBuffDefaultCapacity{ 256 };
+constexpr auto fillBuffDefaultCapacity { 256 };
 inline constexpr formatter::arg_formatter::ArgFormatter::ArgFormatter()
-	: argCounter(0), m_indexMode(IndexMode::automatic), bracketResults(BracketSearchResults{}), specValues(SpecFormatting{}), argStorage(ArgContainer{}),
-	buffer(std::array<char, AF_ARG_BUFFER_SIZE> {}), valueSize(size_t{}), fillBuffer(std::vector<char> {}), errHandle(formatter::af_errors::error_handler{}),
-	timeSpec(TimeSpecs{}) {
+	: argCounter(0), m_indexMode(IndexMode::automatic), bracketResults(BracketSearchResults {}), specValues(SpecFormatting {}), argStorage(ArgContainer {}),
+	  buffer(std::array<char, AF_ARG_BUFFER_SIZE> {}), valueSize(size_t {}), fillBuffer(std::vector<char> {}), errHandle(formatter::af_errors::error_handler {}),
+	  timeSpec(TimeSpecs {}) {
 	// Initialize now to lower the initial cost when formatting (brings initial cost from ~33us down to ~11us). The Call To
 	// UtcOffset() will initialize TimeZoneInstance() via TimeZone() via TZInfo() -> thereby initializing  all function statics.
 	// NOTE: Would still love a constexpr friendly version of this but I'm not finding anything online that says that might be remotely possible
 	//               using the standard and I'd rather not have the cost of initialization fall on a logging call and rather fall on the construction call instead.
-	if (!std::is_constant_evaluated()) formatter::globals::UtcOffset();
+	if( !std::is_constant_evaluated() ) formatter::globals::UtcOffset();
 	fillBuffer.reserve(fillBuffDefaultCapacity);
 }
 
 inline constexpr void formatter::arg_formatter::BracketSearchResults::Reset() {
-	if (!std::is_constant_evaluated()) {
-		std::memset(this, 0, sizeof(BracketSearchResults));
-	}
-	else {
-		beginPos = endPos = 0;
-	}
+	if( !std::is_constant_evaluated() ) {
+			std::memset(this, 0, sizeof(BracketSearchResults));
+	} else {
+			beginPos = endPos = 0;
+		}
 }
 
 inline constexpr void formatter::arg_formatter::TimeSpecs::Reset() {
@@ -338,18 +335,17 @@ inline constexpr void formatter::arg_formatter::TimeSpecs::Reset() {
 }
 
 inline constexpr void formatter::arg_formatter::SpecFormatting::ResetSpecs() {
-	if (!std::is_constant_evaluated()) {
-		std::memset(this, 0, sizeof(SpecFormatting));
-	}
-	else {
-		argPosition = nestedWidthArgPos = nestedPrecArgPos = 0;
-		localize = hasAlt = hasClosingBrace = false;
-		alignmentPadding = precision = 0;
-		fillCharacter = typeSpec = '\0';
-		align = Alignment::Empty;
-		signType = Sign::Empty;
-		preAltForm = "";
-	}
+	if( !std::is_constant_evaluated() ) {
+			std::memset(this, 0, sizeof(SpecFormatting));
+	} else {
+			argPosition = nestedWidthArgPos = nestedPrecArgPos = 0;
+			localize = hasAlt = hasClosingBrace = false;
+			alignmentPadding = precision = 0;
+			fillCharacter = typeSpec = '\0';
+			align                    = Alignment::Empty;
+			signType                 = Sign::Empty;
+			preAltForm               = "";
+		}
 }
 
 inline static constexpr std::vector<char> ConvBuffToSigned(std::vector<unsigned char>& buff, size_t endPos) {

@@ -45,11 +45,11 @@ namespace formatter {
 			  public:
 				inline explicit format_error(const char* message): std::runtime_error(message) { }
 				inline explicit format_error(const std::string& message): std::runtime_error(message) { }
-				inline format_error(const format_error&) = default;
+				inline format_error(const format_error&)            = default;
 				inline format_error& operator=(const format_error&) = default;
 				inline format_error(format_error&&)                 = default;
-				inline format_error& operator=(format_error&&) = default;
-				inline ~format_error() noexcept override       = default;
+				inline format_error& operator=(format_error&&)      = default;
+				inline ~format_error() noexcept override            = default;
 			};
 
 			static constexpr std::array<const char*, 20> format_error_messages = {
@@ -142,12 +142,12 @@ namespace formatter::arg_formatter {
 
 	struct SpecFormatting
 	{
-		inline constexpr SpecFormatting()                      = default;
-		inline constexpr SpecFormatting(const SpecFormatting&) = default;
+		inline constexpr SpecFormatting()                                 = default;
+		inline constexpr SpecFormatting(const SpecFormatting&)            = default;
 		inline constexpr SpecFormatting& operator=(const SpecFormatting&) = default;
 		inline constexpr SpecFormatting(SpecFormatting&&)                 = default;
-		inline constexpr SpecFormatting& operator=(SpecFormatting&&) = default;
-		inline constexpr ~SpecFormatting()                           = default;
+		inline constexpr SpecFormatting& operator=(SpecFormatting&&)      = default;
+		inline constexpr ~SpecFormatting()                                = default;
 
 		inline constexpr void ResetSpecs();
 		unsigned char argPosition { 0 };
@@ -167,12 +167,12 @@ namespace formatter::arg_formatter {
 
 	struct BracketSearchResults
 	{
-		inline constexpr BracketSearchResults()                            = default;
-		inline constexpr BracketSearchResults(const BracketSearchResults&) = default;
+		inline constexpr BracketSearchResults()                                       = default;
+		inline constexpr BracketSearchResults(const BracketSearchResults&)            = default;
 		inline constexpr BracketSearchResults& operator=(const BracketSearchResults&) = default;
 		inline constexpr BracketSearchResults(BracketSearchResults&&)                 = default;
-		inline constexpr BracketSearchResults& operator=(BracketSearchResults&&) = default;
-		inline constexpr ~BracketSearchResults()                                 = default;
+		inline constexpr BracketSearchResults& operator=(BracketSearchResults&&)      = default;
+		inline constexpr ~BracketSearchResults()                                      = default;
 
 		constexpr void Reset();
 		size_t beginPos { 0 };
@@ -226,11 +226,11 @@ namespace formatter::arg_formatter {
 	{
 	  public:
 		inline constexpr ArgFormatter();
-		inline constexpr ArgFormatter(const ArgFormatter&) = delete;
+		inline constexpr ArgFormatter(const ArgFormatter&)            = delete;
 		inline constexpr ArgFormatter& operator=(const ArgFormatter&) = delete;
 		inline constexpr ArgFormatter(ArgFormatter&&)                 = default;
-		inline constexpr ArgFormatter& operator=(ArgFormatter&&) = default;
-		inline constexpr ~ArgFormatter()                         = default;
+		inline constexpr ArgFormatter& operator=(ArgFormatter&&)      = default;
+		inline constexpr ~ArgFormatter()                              = default;
 
 		// clang-format off
 		template<typename T, typename... Args> constexpr void format_to(std::back_insert_iterator<T>&& Iter, const std::locale& loc, std::string_view sv, Args&&... args);

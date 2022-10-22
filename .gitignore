@@ -1,3 +1,2 @@
-/build
-/build_compiled
-/include/ArgFormatter/dependencies
+/Compiled_Build
+/Header_Only_Build

@@ -73,7 +73,7 @@ if (utfutils_ADDED)
         target_link_libraries(ArgFormatter_Lib utfutils)
     else ()
         file(COPY ${utfutils_SOURCE_DIR}/include/UTF-Utils
-             DESTINATION ${CMAKE_SOURCE_DIR}/include/ArgFormatter/dependencies
+             DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/include/ArgFormatter/dependencies
         )
     endif ()
 endif ()
