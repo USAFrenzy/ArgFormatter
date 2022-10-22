@@ -43,13 +43,13 @@ namespace formatter {
 			class format_error: public std::runtime_error
 			{
 			  public:
-				explicit format_error(const char* message): std::runtime_error(message) { }
-				explicit format_error(const std::string& message): std::runtime_error(message) { }
-				format_error(const format_error&)            = default;
-				format_error& operator=(const format_error&) = default;
-				format_error(format_error&&)                 = default;
-				format_error& operator=(format_error&&)      = default;
-				~format_error() noexcept override            = default;
+				inline explicit format_error(const char* message): std::runtime_error(message) { }
+				inline explicit format_error(const std::string& message): std::runtime_error(message) { }
+				inline format_error(const format_error&) = default;
+				inline format_error& operator=(const format_error&) = default;
+				inline format_error(format_error&&)                 = default;
+				inline format_error& operator=(format_error&&) = default;
+				inline ~format_error() noexcept override       = default;
 			};
 
 			static constexpr std::array<const char*, 20> format_error_messages = {
@@ -133,7 +133,7 @@ namespace formatter::arg_formatter {
 
 	struct TimeSpecs
 	{
-		constexpr void Reset();
+		inline constexpr void Reset();
 		std::array<LocaleFormat, 25> timeSpecFormat {};
 		std::array<unsigned char, 25> timeSpecContainer {};
 		std::vector<unsigned char> localizationBuff {};
@@ -142,14 +142,14 @@ namespace formatter::arg_formatter {
 
 	struct SpecFormatting
 	{
-		constexpr SpecFormatting()                                 = default;
-		constexpr SpecFormatting(const SpecFormatting&)            = default;
-		constexpr SpecFormatting& operator=(const SpecFormatting&) = default;
-		constexpr SpecFormatting(SpecFormatting&&)                 = default;
-		constexpr SpecFormatting& operator=(SpecFormatting&&)      = default;
-		constexpr ~SpecFormatting()                                = default;
+		inline constexpr SpecFormatting()                      = default;
+		inline constexpr SpecFormatting(const SpecFormatting&) = default;
+		inline constexpr SpecFormatting& operator=(const SpecFormatting&) = default;
+		inline constexpr SpecFormatting(SpecFormatting&&)                 = default;
+		inline constexpr SpecFormatting& operator=(SpecFormatting&&) = default;
+		inline constexpr ~SpecFormatting()                           = default;
 
-		constexpr void ResetSpecs();
+		inline constexpr void ResetSpecs();
 		unsigned char argPosition { 0 };
 		int alignmentPadding { 0 };
 		int precision { 0 };
@@ -167,12 +167,12 @@ namespace formatter::arg_formatter {
 
 	struct BracketSearchResults
 	{
-		constexpr BracketSearchResults()                                       = default;
-		constexpr BracketSearchResults(const BracketSearchResults&)            = default;
-		constexpr BracketSearchResults& operator=(const BracketSearchResults&) = default;
-		constexpr BracketSearchResults(BracketSearchResults&&)                 = default;
-		constexpr BracketSearchResults& operator=(BracketSearchResults&&)      = default;
-		constexpr ~BracketSearchResults()                                      = default;
+		inline constexpr BracketSearchResults()                            = default;
+		inline constexpr BracketSearchResults(const BracketSearchResults&) = default;
+		inline constexpr BracketSearchResults& operator=(const BracketSearchResults&) = default;
+		inline constexpr BracketSearchResults(BracketSearchResults&&)                 = default;
+		inline constexpr BracketSearchResults& operator=(BracketSearchResults&&) = default;
+		inline constexpr ~BracketSearchResults()                                 = default;
 
 		constexpr void Reset();
 		size_t beginPos { 0 };
@@ -225,12 +225,12 @@ namespace formatter::arg_formatter {
 	class ArgFormatter
 	{
 	  public:
-		constexpr ArgFormatter();
-		constexpr ArgFormatter(const ArgFormatter&)            = delete;
-		constexpr ArgFormatter& operator=(const ArgFormatter&) = delete;
-		constexpr ArgFormatter(ArgFormatter&&)                 = default;
-		constexpr ArgFormatter& operator=(ArgFormatter&&)      = default;
-		constexpr ~ArgFormatter()                              = default;
+		inline constexpr ArgFormatter();
+		inline constexpr ArgFormatter(const ArgFormatter&) = delete;
+		inline constexpr ArgFormatter& operator=(const ArgFormatter&) = delete;
+		inline constexpr ArgFormatter(ArgFormatter&&)                 = default;
+		inline constexpr ArgFormatter& operator=(ArgFormatter&&) = default;
+		inline constexpr ~ArgFormatter()                         = default;
 
 		// clang-format off
 		template<typename T, typename... Args> constexpr void format_to(std::back_insert_iterator<T>&& Iter, const std::locale& loc, std::string_view sv, Args&&... args);
@@ -248,33 +248,33 @@ namespace formatter::arg_formatter {
 		template<typename T> constexpr void Format(T&& container, const SpecType& argType);
 		template<typename T> constexpr void Format(T&& container, const std::locale& loc, const SpecType& argType);
 		/******************************************************* Parsing/Verification Related Functions *******************************************************/
-		constexpr bool FindBrackets(std::string_view sv);
-		constexpr void Parse(std::string_view sv, size_t& currentPosition, const SpecType& argType);
-		constexpr void VerifyTimeSpec(std::string_view sv, size_t& position);
-		constexpr void ParseTimeField(std::string_view sv, size_t& currentPosition);
-		constexpr bool VerifyPositionalField(std::string_view sv, size_t& start, unsigned char& positionValue);
-		constexpr void VerifyFillAlignField(std::string_view sv, size_t& currentPosition, const SpecType& argType);
-		constexpr void VerifyFillAlignTimeField(std::string_view sv, size_t& currentPosition);
-		constexpr void VerifyAltField(std::string_view sv, const SpecType& argType);
-		constexpr void VerifyWidthField(std::string_view sv, size_t& currentPosition);
-		constexpr void VerifyPrecisionField(std::string_view sv, size_t& currentPosition, const SpecType& argType);
-		constexpr void VerifyTimePrecisionField(std::string_view sv, size_t& currentPosition);
-		constexpr void VerifyLocaleField(std::string_view sv, size_t& currentPosition, const SpecType& argType);
-		constexpr void HandlePotentialTypeField(const char& ch, const SpecType& argType);
-		constexpr bool IsSimpleSubstitution(const SpecType& argType, const int& precision);
-		constexpr void OnAlignLeft(const char& ch, size_t& pos);
-		constexpr void OnAlignRight(const char& ch, size_t& pos);
-		constexpr void OnAlignCenter(const char& ch, size_t& pos);
-		constexpr void OnAlignDefault(const SpecType& type, size_t& pos);
-		constexpr void OnValidTypeSpec(const SpecType& type, const char& ch);
-		constexpr void OnInvalidTypeSpec(const SpecType& type);
+		inline constexpr bool FindBrackets(std::string_view sv);
+		inline constexpr void Parse(std::string_view sv, size_t& currentPosition, const SpecType& argType);
+		inline constexpr void VerifyTimeSpec(std::string_view sv, size_t& position);
+		inline constexpr void ParseTimeField(std::string_view sv, size_t& currentPosition);
+		inline constexpr bool VerifyPositionalField(std::string_view sv, size_t& start, unsigned char& positionValue);
+		inline constexpr void VerifyFillAlignField(std::string_view sv, size_t& currentPosition, const SpecType& argType);
+		inline constexpr void VerifyFillAlignTimeField(std::string_view sv, size_t& currentPosition);
+		inline constexpr void VerifyAltField(std::string_view sv, const SpecType& argType);
+		inline constexpr void VerifyWidthField(std::string_view sv, size_t& currentPosition);
+		inline constexpr void VerifyPrecisionField(std::string_view sv, size_t& currentPosition, const SpecType& argType);
+		inline constexpr void VerifyTimePrecisionField(std::string_view sv, size_t& currentPosition);
+		inline constexpr void VerifyLocaleField(std::string_view sv, size_t& currentPosition, const SpecType& argType);
+		inline constexpr void HandlePotentialTypeField(const char& ch, const SpecType& argType);
+		inline constexpr bool IsSimpleSubstitution(const SpecType& argType, const int& precision);
+		inline constexpr void OnAlignLeft(const char& ch, size_t& pos);
+		inline constexpr void OnAlignRight(const char& ch, size_t& pos);
+		inline constexpr void OnAlignCenter(const char& ch, size_t& pos);
+		inline constexpr void OnAlignDefault(const SpecType& type, size_t& pos);
+		inline constexpr void OnValidTypeSpec(const SpecType& type, const char& ch);
+		inline constexpr void OnInvalidTypeSpec(const SpecType& type);
 		/************************************************************ Formatting Related Functions ************************************************************/
 		template<typename T> constexpr void FormatStringType(T&& container, std::string_view val, const int& precision);
 		constexpr void FormatArgument(const int& precision, const int& totalWidth, const SpecType& type);
 		template<typename T> constexpr void FormatAlignment(T&& container, const int& totalWidth);
 		template<typename T> constexpr void FormatAlignment(T&& container, std::string_view val, const int& width, int prec);
-		constexpr void FormatBoolType(bool& value);
-		constexpr void FormatCharType(char& value);
+		inline constexpr void FormatBoolType(bool& value);
+		inline constexpr void FormatCharType(char& value);
 		template<typename T>
 		requires std::is_integral_v<std::remove_cvref_t<T>>
 		constexpr void FormatIntegerType(T&& value);
@@ -290,8 +290,8 @@ namespace formatter::arg_formatter {
 		constexpr void TwoDigitToBuff(T val);
 		template<typename T> constexpr void FormatTimeField(T&& container);
 		template<typename T> constexpr void FormatTimeField(T&& container, const std::locale& loc);
-		constexpr void FormatCTime(const std::tm& cTimeStruct, const int& precision, int startPos = 0, int endPos = 0);
-		void LocalizeCTime(const std::locale& loc, std::tm& timeStruct, const int& precision);
+		inline constexpr void FormatCTime(const std::tm& cTimeStruct, const int& precision, int startPos = 0, int endPos = 0);
+		inline void LocalizeCTime(const std::locale& loc, std::tm& timeStruct, const int& precision);
 		template<typename T> constexpr void WriteSimpleCTime(T&& container);
 		template<typename T> constexpr void Write24HourTime(T&& container, const int& hour, const int& min, const int& sec);
 		template<typename T> constexpr void WriteShortMonth(T&& container, const int& mon);
@@ -329,45 +329,45 @@ namespace formatter::arg_formatter {
 
 		// the distinct difference from these functions vs the 'Write' variants is that they should also handle localization & precision
 		// Right now, they are just one-for-one with one-another, minus the actual container writing portion
-		void FormatSubseconds(int precision);
-		void FormatUtcOffset();
-		void FormatTZName();
-		constexpr void Format24HourTime(int hour, int min, int sec, int precision = 0);
-		constexpr void FormatShortWeekday(int wkday);
-		constexpr void FormatShortMonth(int mon);
-		constexpr void FormatTimeDate(const std::tm& time);
-		constexpr void FormatShortYear(int year);
-		constexpr void FormatSpacePaddedDay(int day);
-		constexpr void FormatShortIsoWeekYear(int year, int yrday, int wkday);
-		constexpr void FormatDayOfYear(int day);
-		constexpr void FormatLiteral(unsigned char lit);
-		constexpr void FormatAMPM(int hr);
-		constexpr void Format12HourTime(int hour, int min, int sec, int precision = 0);
-		constexpr void FormatWeekdayDec(int wkday);
-		constexpr void FormatMMDDYY(int month, int day, int year);
-		constexpr void FormatIsoWeekDec(int wkday);
-		constexpr void FormatLongWeekday(int wkday);
-		constexpr void FormatLongMonth(int mon);
-		constexpr void FormatYYYYMMDD(int year, int mon, int day);
-		constexpr void FormatLongIsoWeekYear(int year, int yrday, int wkday);
-		constexpr void FormatLongYear(int year);
-		constexpr void FormatTruncatedYear(int year);
-		constexpr void Format24HM(int hour, int min);
-		constexpr void FormatIsoWeekNumber(int year, int yrday, int wkday);
+		inline void FormatSubseconds(int precision);
+		inline void FormatUtcOffset();
+		inline void FormatTZName();
+		inline constexpr void Format24HourTime(int hour, int min, int sec, int precision = 0);
+		inline constexpr void FormatShortWeekday(int wkday);
+		inline constexpr void FormatShortMonth(int mon);
+		inline constexpr void FormatTimeDate(const std::tm& time);
+		inline constexpr void FormatShortYear(int year);
+		inline constexpr void FormatSpacePaddedDay(int day);
+		inline constexpr void FormatShortIsoWeekYear(int year, int yrday, int wkday);
+		inline constexpr void FormatDayOfYear(int day);
+		inline constexpr void FormatLiteral(unsigned char lit);
+		inline constexpr void FormatAMPM(int hr);
+		inline constexpr void Format12HourTime(int hour, int min, int sec, int precision = 0);
+		inline constexpr void FormatWeekdayDec(int wkday);
+		inline constexpr void FormatMMDDYY(int month, int day, int year);
+		inline constexpr void FormatIsoWeekDec(int wkday);
+		inline constexpr void FormatLongWeekday(int wkday);
+		inline constexpr void FormatLongMonth(int mon);
+		inline constexpr void FormatYYYYMMDD(int year, int mon, int day);
+		inline constexpr void FormatLongIsoWeekYear(int year, int yrday, int wkday);
+		inline constexpr void FormatLongYear(int year);
+		inline constexpr void FormatTruncatedYear(int year);
+		inline constexpr void Format24HM(int hour, int min);
+		inline constexpr void FormatIsoWeekNumber(int year, int yrday, int wkday);
 
 		//  NOTE: Due to the usage of the numpunct functions, which are not constexpr, these functions can't really be specified as constexpr
-		void LocalizeBool(const std::locale& loc);
-		void FormatIntegralGrouping(const std::locale& loc, size_t end);
-		void LocalizeArgument(const std::locale& loc, const int& precision, const int& totalWidth, const SpecType& type);
-		void LocalizeIntegral(const std::locale& loc, const int& precision, const int& totalWidth, const SpecType& type);
-		void LocalizeFloatingPoint(const std::locale& loc, const int& precision, const int& totalWidth, const SpecType& type);
+		inline void LocalizeBool(const std::locale& loc);
+		inline void FormatIntegralGrouping(const std::locale& loc, size_t end);
+		inline void LocalizeArgument(const std::locale& loc, const int& precision, const int& totalWidth, const SpecType& type);
+		inline void LocalizeIntegral(const std::locale& loc, const int& precision, const int& totalWidth, const SpecType& type);
+		inline void LocalizeFloatingPoint(const std::locale& loc, const int& precision, const int& totalWidth, const SpecType& type);
 		/******************************************************** Container Writing Related Functions *********************************************************/
-		constexpr void BufferToUpper(char* begin, const char* end);
-		constexpr void FillBuffWithChar(const int& totalWidth);
-		constexpr void SetIntegralFormat(int& base, bool& isUpper);
-		constexpr void SetFloatingFormat(std::chars_format& format, int& precision, bool& isUpper);
-		constexpr void WriteChar(const char& value);
-		constexpr void WriteBool(const bool& value);
+		inline constexpr void BufferToUpper(char* begin, const char* end);
+		inline constexpr void FillBuffWithChar(const int& totalWidth);
+		inline constexpr void SetIntegralFormat(int& base, bool& isUpper);
+		inline constexpr void SetFloatingFormat(std::chars_format& format, int& precision, bool& isUpper);
+		inline constexpr void WriteChar(const char& value);
+		inline constexpr void WriteBool(const bool& value);
 		template<typename T> constexpr void WriteFormattedString(T&& container, const SpecType& type, const int& precisionFormatted);
 		template<typename T> constexpr void WriteSimpleValue(T&& container, const SpecType&);
 		template<typename T> constexpr void WriteSimpleString(T&& container);

@@ -93,7 +93,7 @@ namespace formatter {
 				CustomFormatCallBack = std::move(o.CustomFormatCallBack);
 				return *this;
 			}
-			constexpr ~CustomValue() = default;
+			 ~CustomValue() = default;
 
 			constexpr void FormatCallBack(std::string_view parseView) {
 				CustomFormatCallBack(parseView, data, container);
@@ -177,7 +177,7 @@ namespace formatter::msg_details {
 		constexpr ArgContainer& operator=(const ArgContainer&) = delete;
 		constexpr ArgContainer(ArgContainer&&)                 = default;
 		constexpr ArgContainer& operator=(ArgContainer&&)      = default;
-		constexpr ~ArgContainer()                              = default;
+		 ~ArgContainer()                              = default;
 
 		template<typename Iter, typename... Args> constexpr auto CaptureArgs(Iter&& iter, Args&&... args) -> decltype(iter);
 		template<typename Iter, typename... Args> constexpr auto StoreArgs(Iter&& iter, Args&&... args) -> decltype(iter);
