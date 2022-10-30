@@ -41,7 +41,7 @@ if (BUILD_COMPILED_LIB)
         GITHUB_REPOSITORY
         USAFrenzy/UTF-Utils
         VERSION
-        1.0.0
+        1.0.1
         OPTIONS
         "BUILD_COMPILED_LIBRARY On"
     )
@@ -52,7 +52,7 @@ else ()
         GITHUB_REPOSITORY
         USAFrenzy/UTF-Utils
         VERSION
-        1.0.0
+        1.0.1
     )
 endif ()
 
