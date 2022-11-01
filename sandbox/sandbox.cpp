@@ -1,4 +1,4 @@
-#include "../include/ArgFormatter/ArgFormatter.h"
+#include <ArgFormatter/ArgFormatter.h>
 
 #include <iostream>
 

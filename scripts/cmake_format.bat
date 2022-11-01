@@ -5,6 +5,10 @@ REM #        Requires cmakelang to be installed and added to PATH       #
 REM #####################################################################
 pushd ..
 cmake-format -i "CMakeLists.txt" -c "cmake-format.yaml"
+
+	pushd src
+			cmake-format -i "CMakeLists.txt" -c "../cmake-format.yaml"
+	popd
 	pushd tests
 			cmake-format -i "CMakeLists.txt" -c "../cmake-format.yaml"
 	popd

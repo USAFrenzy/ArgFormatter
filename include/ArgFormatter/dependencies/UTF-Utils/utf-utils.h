@@ -838,4 +838,44 @@ namespace utf_utils {
 			}
 	}
 
+	// Take in different text encodings but convert to UTF-8 and store it as a string while exposing the UTF-8 converted result for use via the 'input' variable
+	struct InputSource
+	{
+		std::string input;
+
+		template<typename Src> constexpr InputSource(Src&& src) {
+			if constexpr( std::is_same_v<const char*, utf_utils::Type<Src>> ) {
+					StoreAsUTF8(std::string_view { src });
+			} else {
+					StoreAsUTF8(std::forward<Src>(src));
+				}
+		}
+
+		template<typename Src> constexpr void StoreAsUTF8(Src&& src) {
+			auto bomType { DetectBom(std::forward<Src>(src)) };
+			using enum bom_type;
+			if constexpr( std::is_same_v<std::u16string, Type<Src>> || std::is_same_v<std::u16string_view, Type<Src>> ) {
+					input.reserve(ReserveLengthForU8(src));
+					if( bomType != utf16_no_bom ) return utf_utils::U16ToU8(std::forward<Src>(src), input);
+					printf("Waning: No UTF-16 BOM Detected In Assumed UTF-16 Input.\n");
+					return;
+			} else if( std::is_same_v<std::u32string, Type<Src>> || std::is_same_v<std::u32string_view, Type<Src>> ) {
+					input.reserve(ReserveLengthForU8(src));
+					if( bomType != utf32_no_bom ) return U32ToU8(std::forward<Src>(src), input);
+					printf("Waning: No UTF-32 BOM Detected In Assumed UTF-32 Input.\n");
+					return;
+			} else if constexpr( std::is_signed_v<char> && std::is_same_v<unsigned char, typename Type<Src>::value_type> ) {
+					for( auto& ch: src ) input += static_cast<char>(ch);
+			} else if constexpr( std::is_rvalue_reference_v<utf_utils::Type<Src>> && std::is_same_v<std::string, Type<Src>> ) {
+					input = std::move(src);
+			} else if constexpr( std::is_same_v<std::string, Type<Src>> || std::is_same_v<const char*, Type<Src>> || std::is_same_v<std::string_view, Type<Src>> ) {
+					input = src;
+			}
+			if( !IsValidU8(input) ) {
+					printf("Warning: Invalid Encoding Detected During Internal Conversion Of Input Text To UTF-8.\n");
+					input.clear();
+			}
+		}
+	};
+
 }    // namespace utf_utils

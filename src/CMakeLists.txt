@@ -1,12 +1,12 @@
-set (PROJECT_NAME ArgFormatter_Lib)
+set(PROJECT_NAME ArgFormatter_Lib)
 message("-- Building ${PROJECT_NAME}")
 
 # Individual Groups Of Files
-set(ARG_FMT_HEADERS 
-"../include/ArgFormatter/ArgContainer.h"
-"../include/ArgFormatter/ArgContainerImpl.h"
-"../include/ArgFormatter/ArgFormatter.h"
-"../include/ArgFormatter/ArgFormatterImpl.h"
+set(ARG_FMT_HEADERS
+    "../include/ArgFormatter/ArgContainer.h"
+    "../include/ArgFormatter/ArgContainerImpl.h"
+    "../include/ArgFormatter/ArgFormatter.h"
+    "../include/ArgFormatter/ArgFormatterImpl.h"
 )
 
 set(ARG_FMT_SOURCES "AF_Compiled.cpp")
@@ -28,7 +28,7 @@ set(ARG_FMT_ALL_FILES ${ARG_FMT_SOURCES} ${ARG_FMT_HEADERS})
 add_library(${PROJECT_NAME} ${ARG_FMT_ALL_FILES})
 
 target_include_directories(
-    ${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${UFT_UTILS_INCLUDE_DIRS}
 )
 
 set(STANDARD 20)
