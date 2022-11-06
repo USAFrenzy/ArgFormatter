@@ -119,15 +119,16 @@ namespace formatter::msg_details {
 					if constexpr( formatter::internal_helper::af_concepts::is_supported_v<formatter::internal_helper::af_typedefs::type<ArgType>> ) {
 							StoreNativeArg(
 							std::forward<formatter::internal_helper::af_typedefs::FwdRef<ArgType>>(formatter::internal_helper::af_typedefs::FwdRef<ArgType>(arg)));
-					} else if constexpr( std::is_constructible_v<std::add_const_t<std::remove_cvref_t<std::remove_extent_t<ArgType>>>> ) {
-							if constexpr( auto _ { std::add_const_t<std::remove_cvref_t<std::remove_extent_t<ArgType>>> {} }; std::is_same_v<decltype(_), const char*> )
-							{
+					} else if constexpr( std::is_constructible_v<std::remove_cvref_t<std::remove_extent_t<ArgType>>> ) {
+							// test for cases of 'char[]&] and 'char[]' and treat as a c-string (storing it natively) -> solving
+							// https://github.com/USAFrenzy/ArgFormatter/issues/2
+							if constexpr( auto _ { std::remove_cvref_t<std::remove_extent_t<ArgType>> {} }; std::is_same_v<decltype(_), char*> ) {
 									StoreNativeArg(std::forward<const char*>(static_cast<const char*>(arg)));
-							} else {
+							} else {    // isn't a c-string relative or native type so store it as a custom type
 									iter = std::move(StoreCustomArg(std::move(iter), std::forward<formatter::internal_helper::af_typedefs::FwdRef<ArgType>>(
 																					 formatter::internal_helper::af_typedefs::FwdRef<ArgType>(arg))));
 								}
-					} else {
+					} else {    // non-constructible -> assume the type requires a reference and that the default/copy constructors are deleted
 							iter = std::move(StoreCustomArg(std::move(iter), std::forward<formatter::internal_helper::af_typedefs::FwdRef<ArgType>>(
 																			 formatter::internal_helper::af_typedefs::FwdRef<ArgType>(arg))));
 						}

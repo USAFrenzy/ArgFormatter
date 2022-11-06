@@ -950,7 +950,15 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 						if( sv[ 0 ] == '{' && sv[ 1 ] == '}' ) {
 								auto& argType { argStorage.SpecTypesCaptured()[ 0 ] };
 								switch( argType ) {
-										case SpecType::CustomType: argStorage.custom_state(0).FormatCallBack(sv); return;
+										case SpecType::CustomType:
+											{
+												// make a copy to reset the original scope of types that may have been overwritten  due to global formatter::format
+												// call in nested formatting
+												auto originalArgTypes { argStorage.SpecTypesCaptured() };
+												argStorage.custom_state(0).FormatCallBack(sv);
+												argStorage.SpecTypesCaptured() = std::move(originalArgTypes);
+												return;
+											}
 										default:
 											WriteSimpleValue(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), std::move(argType));
 											return;
@@ -1017,9 +1025,17 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 			/************************************* Handle Positional Args *************************************/
 			if( !VerifyPositionalField(argBracket, pos, specValues.argPosition) ) {
 					// Nothing Else to Parse- just a simple substitution after position field so write it and continute parsing format string
-					auto& argType { argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
+					auto argType { argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
 					switch( argType ) {
-							case SpecType::CustomType: argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket); break;
+							case SpecType::CustomType:
+								{
+									// make a copy to reset the original scope of types that may have been overwritten  due to global formatter::format call in
+									// nested formatting
+									auto originalArgTypes { argStorage.SpecTypesCaptured() };
+									argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket);
+									argStorage.SpecTypesCaptured() = std::move(originalArgTypes);
+									break;
+								}
 							case SpecType::CTimeType: WriteSimpleCTime(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); break;
 							default: WriteSimpleValue(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), argType); break;
 						}
@@ -1030,9 +1046,17 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 					continue;
 			}
 			/****************************** Handle What's Left Of The Bracket ******************************/
-			auto& argType { argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
+			auto argType { argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
 			switch( argType ) {
-					case SpecType::CustomType: argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket); break;
+					case SpecType::CustomType:
+						{
+							// make a copy to reset the original scope of types that may have been overwritten  due to global formatter::format call in nested
+							// formatting
+							auto originalArgTypes { argStorage.SpecTypesCaptured() };
+							argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket);
+							argStorage.SpecTypesCaptured() = std::move(originalArgTypes);
+							break;
+						}
 					case SpecType::CTimeType:
 						ParseTimeField(argBracket, pos);
 						FormatTimeField(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container));
@@ -1094,7 +1118,15 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 						if( sv[ 0 ] == '{' && sv[ 1 ] == '}' ) {
 								auto& argType { argStorage.SpecTypesCaptured()[ 0 ] };
 								switch( argType ) {
-										case SpecType::CustomType: argStorage.custom_state(0).FormatCallBack(sv); return;
+										case SpecType::CustomType:
+											{
+												// make a copy to reset the original scope of types that may have been overwritten  due to global formatter::format
+												// call in nested formatting
+												auto originalArgTypes { argStorage.SpecTypesCaptured() };
+												argStorage.custom_state(0).FormatCallBack(sv);
+												argStorage.SpecTypesCaptured() = std::move(originalArgTypes);
+												return;
+											}
 										default:
 											WriteSimpleValue(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), std::move(argType));
 											return;
@@ -1163,7 +1195,15 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 					// Nothing Else to Parse- just a simple substitution after position field so write it and continute parsing format string
 					auto& argType { argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
 					switch( argType ) {
-							case SpecType::CustomType: argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket); break;
+							case SpecType::CustomType:
+								{
+									// make a copy to reset the original scope of types that may have been overwritten  due to global formatter::format call in
+									// nested formatting
+									auto originalArgTypes { argStorage.SpecTypesCaptured() };
+									argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket);
+									argStorage.SpecTypesCaptured() = std::move(originalArgTypes);
+									break;
+								}
 							case SpecType::CTimeType: WriteSimpleCTime(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); break;
 							default: WriteSimpleValue(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), argType); break;
 						}
@@ -1176,7 +1216,15 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 			/****************************** Handle What's Left Of The Bracket ******************************/
 			auto& argType { argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
 			switch( argType ) {
-					case SpecType::CustomType: argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket); break;
+					case SpecType::CustomType:
+						{
+							// make a copy to reset the original scope of types that may have been overwritten  due to global formatter::format call in nested
+							// formatting
+							auto originalArgTypes { argStorage.SpecTypesCaptured() };
+							argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket);
+							argStorage.SpecTypesCaptured() = std::move(originalArgTypes);
+							break;
+						}
 					case SpecType::CTimeType:
 						ParseTimeField(argBracket, pos);
 						FormatTimeField(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), loc);
