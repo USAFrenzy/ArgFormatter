@@ -119,6 +119,14 @@ namespace formatter::msg_details {
 					if constexpr( formatter::internal_helper::af_concepts::is_supported_v<formatter::internal_helper::af_typedefs::type<ArgType>> ) {
 							StoreNativeArg(
 							std::forward<formatter::internal_helper::af_typedefs::FwdRef<ArgType>>(formatter::internal_helper::af_typedefs::FwdRef<ArgType>(arg)));
+					} else if constexpr( std::is_constructible_v<std::add_const_t<std::remove_cvref_t<std::remove_extent_t<ArgType>>>> ) {
+							if constexpr( auto _ { std::add_const_t<std::remove_cvref_t<std::remove_extent_t<ArgType>>> {} }; std::is_same_v<decltype(_), const char*> )
+							{
+									StoreNativeArg(std::forward<const char*>(static_cast<const char*>(arg)));
+							} else {
+									iter = std::move(StoreCustomArg(std::move(iter), std::forward<formatter::internal_helper::af_typedefs::FwdRef<ArgType>>(
+																					 formatter::internal_helper::af_typedefs::FwdRef<ArgType>(arg))));
+								}
 					} else {
 							iter = std::move(StoreCustomArg(std::move(iter), std::forward<formatter::internal_helper::af_typedefs::FwdRef<ArgType>>(
 																			 formatter::internal_helper::af_typedefs::FwdRef<ArgType>(arg))));

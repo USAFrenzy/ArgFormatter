@@ -243,9 +243,30 @@ namespace formatter::msg_details {
 				return std::forward<SpecType>(VoidPtrType);
 		} else if constexpr( std::is_same_v<internal_helper::af_typedefs::type<T>, std::tm> ) {
 				return std::forward<SpecType>(CTimeType);
+		} else if constexpr( std::is_reference_v<T> ) {
+				// As odd as it is, this case deals with 'char[]& 'or 'char[]' so as to treat those cases as c-style strings. If the base type is constructible, then
+				// we can test for the case of it being a c-string relative, if it's not constructible, then only references can be made to the value, so just return
+				// CustomType and let the CustomFormatter handle it
+				if constexpr( std::is_constructible_v<internal_helper::af_typedefs::type<T>> ) {
+						if constexpr( auto _ { std::add_const_t<std::remove_cvref_t<std::remove_extent_t<T>>> {} }; std::is_same_v<decltype(_), const char*> ) {
+								return std::forward<SpecType>(CharPointerType);
+						} else {
+								return std::forward<SpecType>(MonoType);
+							}
+				} else {
+						// clang-format off
+					static_assert(internal_helper::af_concepts::is_formattable_v<internal_helper::af_typedefs::type<T>>,
+						"A Template Specialization Must Exist For A Custom Type Argument.\n\t For ArgFormatter, This Can Be Done By "
+						"Specializing The CustomFormatter Template For Your Type And Implementing The Parse() And Format() Functions.");
+						// clang-format on
+						return std::forward<SpecType>(CustomType);
+					}
 		} else {
+				// This is the case where if none of the above has been matched, then it's either an xvalue
+				// or pvalue, so just return CustomType here and let the CustomFormatter handle it
+
 				// clang-format off
-			static_assert(internal_helper::af_concepts::is_formattable_v<internal_helper::af_typedefs::type<T>>,
+				static_assert(internal_helper::af_concepts::is_formattable_v<internal_helper::af_typedefs::type<T>>,
 				"A Template Specialization Must Exist For A Custom Type Argument.\n\t For ArgFormatter, This Can Be Done By "
 				"Specializing The CustomFormatter Template For Your Type And Implementing The Parse() And Format() Functions.");
 				// clang-format on
