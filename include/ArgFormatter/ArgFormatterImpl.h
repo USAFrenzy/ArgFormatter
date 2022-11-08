@@ -309,8 +309,8 @@ static constexpr size_t se_from_chars(const char* begin, const char* end, Interg
 constexpr auto fillBuffDefaultCapacity { 256 };
 inline constexpr formatter::arg_formatter::ArgFormatter::ArgFormatter()
 	: argCounter(0), m_indexMode(IndexMode::automatic), bracketResults(BracketSearchResults {}), specValues(SpecFormatting {}), argStorage(ArgContainer {}),
-	  buffer(std::array<char, AF_ARG_BUFFER_SIZE> {}), valueSize(size_t {}), fillBuffer(std::vector<char> {}), errHandle(formatter::af_errors::error_handler {}),
-	  timeSpec(TimeSpecs {}) {
+	  customStorage(ArgContainer {}), buffer(std::array<char, AF_ARG_BUFFER_SIZE> {}), valueSize(size_t {}), fillBuffer(std::vector<char> {}),
+	  errHandle(formatter::af_errors::error_handler {}), timeSpec(TimeSpecs {}), lastRootCounter(0) {
 	// Initialize now to lower the initial cost when formatting (brings initial cost from ~33us down to ~11us). The Call To
 	// UtcOffset() will initialize TimeZoneInstance() via TimeZone() via TZInfo() -> thereby initializing  all function statics.
 	// NOTE: Would still love a constexpr friendly version of this but I'm not finding anything online that says that might be remotely possible
@@ -434,17 +434,27 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Writ
 }
 
 template<typename Iter, typename... Args> constexpr auto formatter::arg_formatter::ArgFormatter::CaptureArgs(Iter&& iter, Args&&... args) -> decltype(iter) {
-	return std::move(argStorage.CaptureArgs(std::move(iter), std::forward<Args>(args)...));
+	if( argStorage.isCustomFormatter ) {
+			return std::move(customStorage.CaptureArgs(std::move(iter), std::forward<Args>(args)...));
+	} else {
+			return std::move(argStorage.CaptureArgs(std::move(iter), std::forward<Args>(args)...));
+		}
 }
 
 template<typename T, typename... Args>
 constexpr void formatter::arg_formatter::ArgFormatter::format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args) {
+	lastRootCounter = argCounter;
 	ParseFormatString(std::move(CaptureArgs(std::move(Iter), std::forward<Args>(args)...)), sv);
+	argStorage.isCustomFormatter = false;
+	argCounter                   = lastRootCounter;
 }
 
 template<typename T, typename... Args>
 constexpr void formatter::arg_formatter::ArgFormatter::format_to(std::back_insert_iterator<T>&& Iter, const std::locale& loc, std::string_view sv, Args&&... args) {
+	lastRootCounter = argCounter;
 	ParseFormatString(std::move(CaptureArgs(std::move(Iter), std::forward<Args>(args)...)), loc, sv);
+	argStorage.isCustomFormatter = false;
+	argCounter                   = lastRootCounter;
 }
 
 template<typename... Args> std::string formatter::arg_formatter::ArgFormatter::format(std::string_view sv, Args&&... args) {
@@ -560,10 +570,20 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatAlignment(T&& conta
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Format(T&& container, const msg_details::SpecType& argType) {
-	auto precision { specValues.nestedPrecArgPos != 0 ? argStorage.int_state(specValues.nestedPrecArgPos) : specValues.precision != 0 ? specValues.precision : 0 };
-	auto totalWidth { specValues.nestedWidthArgPos != 0  ? argStorage.int_state(specValues.nestedWidthArgPos)
-		              : specValues.alignmentPadding != 0 ? specValues.alignmentPadding
-		                                                 : 0 };
+	int precision, totalWidth;
+	if( argStorage.isCustomFormatter ) {
+			precision  = specValues.nestedPrecArgPos != 0 ? customStorage.int_state(specValues.nestedPrecArgPos)
+			           : specValues.precision != 0        ? specValues.precision
+			                                              : 0;
+			totalWidth = specValues.nestedWidthArgPos != 0 ? customStorage.int_state(specValues.nestedWidthArgPos)
+			           : specValues.alignmentPadding != 0  ? specValues.alignmentPadding
+			                                               : 0;
+	} else {
+			precision  = specValues.nestedPrecArgPos != 0 ? argStorage.int_state(specValues.nestedPrecArgPos) : specValues.precision != 0 ? specValues.precision : 0;
+			totalWidth = specValues.nestedWidthArgPos != 0 ? argStorage.int_state(specValues.nestedWidthArgPos)
+			           : specValues.alignmentPadding != 0  ? specValues.alignmentPadding
+			                                               : 0;
+		}
 	if( totalWidth == 0 ) {    // use this check to guard from any unnecessary additional checks
 			if( IsSimpleSubstitution(argType, precision) ) {
 					// Handles The Case Of No Specifiers And No Alignment
@@ -589,25 +609,50 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Form
 				FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), totalWidth);
 				return;
 			case SpecType::StringViewType:
-				FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.string_view_state(specValues.argPosition),
-				                totalWidth, precision);
+				if( argStorage.isCustomFormatter ) {
+						FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container),
+						                customStorage.string_view_state(specValues.argPosition), totalWidth, precision);
+				} else {
+						FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container),
+						                argStorage.string_view_state(specValues.argPosition), totalWidth, precision);
+					}
 				return;
 			case SpecType::CharPointerType:
-				FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.c_string_state(specValues.argPosition),
-				                totalWidth, precision);
+				if( argStorage.isCustomFormatter ) {
+						FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container),
+						                customStorage.c_string_state(specValues.argPosition), totalWidth, precision);
+				} else {
+						FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container),
+						                argStorage.c_string_state(specValues.argPosition), totalWidth, precision);
+					}
 				return;
 			case SpecType::StringType:
-				FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.string_state(specValues.argPosition),
-				                totalWidth, precision);
+				if( argStorage.isCustomFormatter ) {
+						FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container),
+						                customStorage.string_state(specValues.argPosition), totalWidth, precision);
+				} else {
+						FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.string_state(specValues.argPosition),
+						                totalWidth, precision);
+					}
 				return;
 		}
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Format(T&& container, const std::locale& loc, const msg_details::SpecType& argType) {
-	auto precision { specValues.nestedPrecArgPos != 0 ? argStorage.int_state(specValues.nestedPrecArgPos) : specValues.precision != 0 ? specValues.precision : 0 };
-	auto totalWidth { specValues.nestedWidthArgPos != 0  ? argStorage.int_state(specValues.nestedWidthArgPos)
-		              : specValues.alignmentPadding != 0 ? specValues.alignmentPadding
-		                                                 : 0 };
+	int precision, totalWidth;
+	if( argStorage.isCustomFormatter ) {
+			precision  = specValues.nestedPrecArgPos != 0 ? customStorage.int_state(specValues.nestedPrecArgPos)
+			           : specValues.precision != 0        ? specValues.precision
+			                                              : 0;
+			totalWidth = specValues.nestedWidthArgPos != 0 ? customStorage.int_state(specValues.nestedWidthArgPos)
+			           : specValues.alignmentPadding != 0  ? specValues.alignmentPadding
+			                                               : 0;
+	} else {
+			precision  = specValues.nestedPrecArgPos != 0 ? argStorage.int_state(specValues.nestedPrecArgPos) : specValues.precision != 0 ? specValues.precision : 0;
+			totalWidth = specValues.nestedWidthArgPos != 0 ? argStorage.int_state(specValues.nestedWidthArgPos)
+			           : specValues.alignmentPadding != 0  ? specValues.alignmentPadding
+			                                               : 0;
+		}
 	if( totalWidth == 0 ) {    // use this check to guard from any unnecessary additional checks
 			if( IsSimpleSubstitution(argType, precision) ) {
 					// Handles The Case Of No Specifiers And No Alignment
@@ -633,16 +678,31 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Form
 				FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), totalWidth);
 				return;
 			case SpecType::StringViewType:
-				FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.string_view_state(specValues.argPosition),
-				                totalWidth, precision);
+				if( argStorage.isCustomFormatter ) {
+						FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container),
+						                customStorage.string_view_state(specValues.argPosition), totalWidth, precision);
+				} else {
+						FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container),
+						                argStorage.string_view_state(specValues.argPosition), totalWidth, precision);
+					}
 				return;
 			case SpecType::CharPointerType:
-				FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.c_string_state(specValues.argPosition),
-				                totalWidth, precision);
+				if( argStorage.isCustomFormatter ) {
+						FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container),
+						                customStorage.c_string_state(specValues.argPosition), totalWidth, precision);
+				} else {
+						FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container),
+						                argStorage.c_string_state(specValues.argPosition), totalWidth, precision);
+					}
 				return;
 			case SpecType::StringType:
-				FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.string_state(specValues.argPosition),
-				                totalWidth, precision);
+				if( argStorage.isCustomFormatter ) {
+						FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container),
+						                customStorage.string_state(specValues.argPosition), totalWidth, precision);
+				} else {
+						FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.string_state(specValues.argPosition),
+						                totalWidth, precision);
+					}
 				return;
 		}
 }
@@ -824,39 +884,79 @@ inline constexpr void formatter::arg_formatter::ArgFormatter::ParseTimeField(std
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::FormatTimeField(T&& container) {
-	auto precision { specValues.nestedPrecArgPos != 0 ? argStorage.int_state(specValues.nestedPrecArgPos) : specValues.precision != 0 ? specValues.precision : 0 };
-	auto totalWidth { specValues.nestedWidthArgPos != 0  ? argStorage.int_state(specValues.nestedWidthArgPos)
-		              : specValues.alignmentPadding != 0 ? specValues.alignmentPadding
-		                                                 : 0 };
+	int precision, totalWidth;
+	if( argStorage.isCustomFormatter ) {
+			precision  = specValues.nestedPrecArgPos != 0 ? customStorage.int_state(specValues.nestedPrecArgPos)
+			           : specValues.precision != 0        ? specValues.precision
+			                                              : 0;
+			totalWidth = specValues.nestedWidthArgPos != 0 ? customStorage.int_state(specValues.nestedWidthArgPos)
+			           : specValues.alignmentPadding != 0  ? specValues.alignmentPadding
+			                                               : 0;
+	} else {
+			precision  = specValues.nestedPrecArgPos != 0 ? argStorage.int_state(specValues.nestedPrecArgPos) : specValues.precision != 0 ? specValues.precision : 0;
+			totalWidth = specValues.nestedWidthArgPos != 0 ? argStorage.int_state(specValues.nestedWidthArgPos)
+			           : specValues.alignmentPadding != 0  ? specValues.alignmentPadding
+			                                               : 0;
+		}
 	const auto& counter { timeSpec.timeSpecCounter };
 	if( totalWidth == 0 && precision == 0 && counter < 2 ) {
 			return WriteSimpleCTime(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container));
 	} else if( totalWidth == 0 ) {
-			!specValues.localize ? FormatCTime(argStorage.c_time_state(specValues.argPosition), precision, 0, counter)
-								 : LocalizeCTime(default_locale, argStorage.c_time_state(specValues.argPosition), precision);
+			if( argStorage.isCustomFormatter ) {
+					!specValues.localize ? FormatCTime(customStorage.c_time_state(specValues.argPosition), precision, 0, counter)
+										 : LocalizeCTime(default_locale, customStorage.c_time_state(specValues.argPosition), precision);
+			} else {
+					!specValues.localize ? FormatCTime(argStorage.c_time_state(specValues.argPosition), precision, 0, counter)
+										 : LocalizeCTime(default_locale, argStorage.c_time_state(specValues.argPosition), precision);
+				}
 			return WriteBufferToContainer(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container));
 	} else {
-			!specValues.localize ? FormatCTime(argStorage.c_time_state(specValues.argPosition), precision, 0, counter)
-								 : LocalizeCTime(default_locale, argStorage.c_time_state(specValues.argPosition), precision);
+			if( argStorage.isCustomFormatter ) {
+					!specValues.localize ? FormatCTime(customStorage.c_time_state(specValues.argPosition), precision, 0, counter)
+										 : LocalizeCTime(default_locale, customStorage.c_time_state(specValues.argPosition), precision);
+			} else {
+					!specValues.localize ? FormatCTime(argStorage.c_time_state(specValues.argPosition), precision, 0, counter)
+										 : LocalizeCTime(default_locale, argStorage.c_time_state(specValues.argPosition), precision);
+				}
 			FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), totalWidth);
 		}
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::FormatTimeField(T&& container, const std::locale& loc) {
-	auto precision { specValues.nestedPrecArgPos != 0 ? argStorage.int_state(specValues.nestedPrecArgPos) : specValues.precision != 0 ? specValues.precision : 0 };
-	auto totalWidth { specValues.nestedWidthArgPos != 0  ? argStorage.int_state(specValues.nestedWidthArgPos)
-		              : specValues.alignmentPadding != 0 ? specValues.alignmentPadding
-		                                                 : 0 };
+	int precision, totalWidth;
+	if( argStorage.isCustomFormatter ) {
+			precision  = specValues.nestedPrecArgPos != 0 ? customStorage.int_state(specValues.nestedPrecArgPos)
+			           : specValues.precision != 0        ? specValues.precision
+			                                              : 0;
+			totalWidth = specValues.nestedWidthArgPos != 0 ? customStorage.int_state(specValues.nestedWidthArgPos)
+			           : specValues.alignmentPadding != 0  ? specValues.alignmentPadding
+			                                               : 0;
+	} else {
+			precision  = specValues.nestedPrecArgPos != 0 ? argStorage.int_state(specValues.nestedPrecArgPos) : specValues.precision != 0 ? specValues.precision : 0;
+			totalWidth = specValues.nestedWidthArgPos != 0 ? argStorage.int_state(specValues.nestedWidthArgPos)
+			           : specValues.alignmentPadding != 0  ? specValues.alignmentPadding
+			                                               : 0;
+		}
 	const auto& counter { timeSpec.timeSpecCounter };
 	if( totalWidth == 0 && precision == 0 && counter < 2 ) {
 			return WriteSimpleCTime(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container));
 	} else if( totalWidth == 0 ) {
-			!specValues.localize ? FormatCTime(argStorage.c_time_state(specValues.argPosition), precision, 0, counter)
-								 : LocalizeCTime(loc, argStorage.c_time_state(specValues.argPosition), precision);
+			if( argStorage.isCustomFormatter ) {
+					!specValues.localize ? FormatCTime(customStorage.c_time_state(specValues.argPosition), precision, 0, counter)
+										 : LocalizeCTime(loc, customStorage.c_time_state(specValues.argPosition), precision);
+			} else {
+					!specValues.localize ? FormatCTime(argStorage.c_time_state(specValues.argPosition), precision, 0, counter)
+										 : LocalizeCTime(loc, argStorage.c_time_state(specValues.argPosition), precision);
+				}
 			return WriteBufferToContainer(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container));
 	} else {
-			!specValues.localize ? FormatCTime(argStorage.c_time_state(specValues.argPosition), precision, 0, counter)
-								 : LocalizeCTime(loc, argStorage.c_time_state(specValues.argPosition), precision);
+			if( argStorage.isCustomFormatter ) {
+					!specValues.localize ? FormatCTime(customStorage.c_time_state(specValues.argPosition), precision, 0, counter)
+										 : LocalizeCTime(loc, customStorage.c_time_state(specValues.argPosition), precision);
+			} else {
+					!specValues.localize ? FormatCTime(argStorage.c_time_state(specValues.argPosition), precision, 0, counter)
+										 : LocalizeCTime(loc, argStorage.c_time_state(specValues.argPosition), precision);
+				}
 			FormatAlignment(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), totalWidth);
 		}
 }
@@ -948,15 +1048,12 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 						/*******************************************************  NOTE *******************************************************/
 						// Handle If format string only contains '{}' and no other text
 						if( sv[ 0 ] == '{' && sv[ 1 ] == '}' ) {
-								auto& argType { argStorage.SpecTypesCaptured()[ 0 ] };
+								auto& argType { argStorage.isCustomFormatter ? customStorage.SpecTypesCaptured()[ 0 ] : argStorage.SpecTypesCaptured()[ 0 ] };
 								switch( argType ) {
 										case SpecType::CustomType:
 											{
-												// make a copy to reset the original scope of types that may have been overwritten  due to global formatter::format
-												// call in nested formatting
-												auto originalArgTypes { argStorage.SpecTypesCaptured() };
-												argStorage.custom_state(0).FormatCallBack(sv);
-												argStorage.SpecTypesCaptured() = std::move(originalArgTypes);
+												argStorage.isCustomFormatter = true;
+												argStorage.custom_state(specValues.argPosition).FormatCallBack(sv);
 												return;
 											}
 										default:
@@ -1025,15 +1122,13 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 			/************************************* Handle Positional Args *************************************/
 			if( !VerifyPositionalField(argBracket, pos, specValues.argPosition) ) {
 					// Nothing Else to Parse- just a simple substitution after position field so write it and continute parsing format string
-					auto argType { argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
+					auto& argType { argStorage.isCustomFormatter ? customStorage.SpecTypesCaptured()[ specValues.argPosition ]
+						                                         : argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
 					switch( argType ) {
 							case SpecType::CustomType:
 								{
-									// make a copy to reset the original scope of types that may have been overwritten  due to global formatter::format call in
-									// nested formatting
-									auto originalArgTypes { argStorage.SpecTypesCaptured() };
+									argStorage.isCustomFormatter = true;
 									argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket);
-									argStorage.SpecTypesCaptured() = std::move(originalArgTypes);
 									break;
 								}
 							case SpecType::CTimeType: WriteSimpleCTime(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); break;
@@ -1046,15 +1141,13 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 					continue;
 			}
 			/****************************** Handle What's Left Of The Bracket ******************************/
-			auto argType { argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
+			auto& argType { argStorage.isCustomFormatter ? customStorage.SpecTypesCaptured()[ specValues.argPosition ]
+				                                         : argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
 			switch( argType ) {
 					case SpecType::CustomType:
 						{
-							// make a copy to reset the original scope of types that may have been overwritten  due to global formatter::format call in nested
-							// formatting
-							auto originalArgTypes { argStorage.SpecTypesCaptured() };
+							argStorage.isCustomFormatter = true;
 							argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket);
-							argStorage.SpecTypesCaptured() = std::move(originalArgTypes);
 							break;
 						}
 					case SpecType::CTimeType:
@@ -1116,15 +1209,12 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 						/*******************************************************  NOTE *******************************************************/
 						// Handle If format string only contains '{}' and no other text
 						if( sv[ 0 ] == '{' && sv[ 1 ] == '}' ) {
-								auto& argType { argStorage.SpecTypesCaptured()[ 0 ] };
+								auto& argType { argStorage.isCustomFormatter ? customStorage.SpecTypesCaptured()[ 0 ] : argStorage.SpecTypesCaptured()[ 0 ] };
 								switch( argType ) {
 										case SpecType::CustomType:
 											{
-												// make a copy to reset the original scope of types that may have been overwritten  due to global formatter::format
-												// call in nested formatting
-												auto originalArgTypes { argStorage.SpecTypesCaptured() };
-												argStorage.custom_state(0).FormatCallBack(sv);
-												argStorage.SpecTypesCaptured() = std::move(originalArgTypes);
+												argStorage.isCustomFormatter = true;
+												argStorage.custom_state(specValues.argPosition).FormatCallBack(sv);
 												return;
 											}
 										default:
@@ -1193,15 +1283,13 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 			/************************************* Handle Positional Args *************************************/
 			if( !VerifyPositionalField(argBracket, pos, specValues.argPosition) ) {
 					// Nothing Else to Parse- just a simple substitution after position field so write it and continute parsing format string
-					auto& argType { argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
+					auto& argType { argStorage.isCustomFormatter ? customStorage.SpecTypesCaptured()[ specValues.argPosition ]
+						                                         : argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
 					switch( argType ) {
 							case SpecType::CustomType:
 								{
-									// make a copy to reset the original scope of types that may have been overwritten  due to global formatter::format call in
-									// nested formatting
-									auto originalArgTypes { argStorage.SpecTypesCaptured() };
+									argStorage.isCustomFormatter = true;
 									argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket);
-									argStorage.SpecTypesCaptured() = std::move(originalArgTypes);
 									break;
 								}
 							case SpecType::CTimeType: WriteSimpleCTime(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); break;
@@ -1214,15 +1302,13 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 					continue;
 			}
 			/****************************** Handle What's Left Of The Bracket ******************************/
-			auto& argType { argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
+			auto& argType { argStorage.isCustomFormatter ? customStorage.SpecTypesCaptured()[ specValues.argPosition ]
+				                                         : argStorage.SpecTypesCaptured()[ specValues.argPosition ] };
 			switch( argType ) {
 					case SpecType::CustomType:
 						{
-							// make a copy to reset the original scope of types that may have been overwritten  due to global formatter::format call in nested
-							// formatting
-							auto originalArgTypes { argStorage.SpecTypesCaptured() };
+							argStorage.isCustomFormatter = true;
 							argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket);
-							argStorage.SpecTypesCaptured() = std::move(originalArgTypes);
 							break;
 						}
 					case SpecType::CTimeType:
@@ -1274,16 +1360,21 @@ inline constexpr bool formatter::arg_formatter::ArgFormatter::FindBrackets(std::
 inline constexpr bool formatter::arg_formatter::ArgFormatter::VerifyPositionalField(std::string_view sv, size_t& start, unsigned char& positionValue) {
 	if( m_indexMode == IndexMode::automatic ) {
 			// we're in automatic mode
+			auto& valueType { argStorage.isCustomFormatter ? customStorage.SpecTypesCaptured() : argStorage.SpecTypesCaptured() };
 			if( const auto& ch { sv[ start ] }; IsDigit(ch) ) {
 					m_indexMode = IndexMode::manual;
 					return VerifyPositionalField(sv, start, positionValue);
 			} else if( ch == '}' ) {
 					positionValue = argCounter;
-					++argCounter;
+					if( valueType[ ++argCounter ] == formatter::msg_details::SpecType::MonoType ) {
+							--argCounter;
+					}
 					return false;
 			} else if( ch == ':' ) {
 					positionValue = argCounter;
-					++argCounter;
+					if( valueType[ ++argCounter ] == formatter::msg_details::SpecType::MonoType ) {
+							--argCounter;
+					}
 					++start;
 					return true;
 			} else if( ch == ' ' ) {
@@ -1295,7 +1386,9 @@ inline constexpr bool formatter::arg_formatter::ArgFormatter::VerifyPositionalFi
 							case ':': [[fallthrough]];
 							case '}':
 								positionValue = argCounter;
-								++argCounter;
+								if( valueType[ ++argCounter ] == formatter::msg_details::SpecType::MonoType ) {
+										--argCounter;
+								}
 								++start;
 								return true;
 								break;
@@ -1575,17 +1668,20 @@ inline constexpr void formatter::arg_formatter::ArgFormatter::HandlePotentialTyp
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleString(T&& container) {
-	std::string_view sv { std::move(argStorage.string_state(specValues.argPosition)) };
+	std::string_view sv { std::move(argStorage.isCustomFormatter ? customStorage.string_state(specValues.argPosition)
+		                                                         : argStorage.string_state(specValues.argPosition)) };
 	FlushBuffer(sv, sv.size(), std::forward<T>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleCString(T&& container) {
-	std::string_view sv { std::move(argStorage.c_string_state(specValues.argPosition)) };
+	std::string_view sv { std::move(argStorage.isCustomFormatter ? customStorage.c_string_state(specValues.argPosition)
+		                                                         : argStorage.c_string_state(specValues.argPosition)) };
 	FlushBuffer(sv, sv.size(), std::forward<T>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleStringView(T&& container) {
-	std::string_view sv { std::move(argStorage.string_view_state(specValues.argPosition)) };
+	std::string_view sv { std::move(argStorage.isCustomFormatter ? customStorage.string_view_state(specValues.argPosition)
+		                                                         : argStorage.string_view_state(specValues.argPosition)) };
 	FlushBuffer(sv, sv.size(), std::forward<T>(container));
 }
 
@@ -1593,28 +1689,36 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Writ
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
-	FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.int_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
+	argStorage.isCustomFormatter
+	? FlushBuffer(buffer, std::to_chars(data, data + size, customStorage.int_state(specValues.argPosition)).ptr - data, std::forward<T>(container))
+	: FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.int_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleUInt(T&& container) {
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
-	FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.uint_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
+	argStorage.isCustomFormatter
+	? FlushBuffer(buffer, std::to_chars(data, data + size, customStorage.uint_state(specValues.argPosition)).ptr - data, std::forward<T>(container))
+	: FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.uint_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleLongLong(T&& container) {
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
-	FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.long_long_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
+	argStorage.isCustomFormatter
+	? FlushBuffer(buffer, std::to_chars(data, data + size, customStorage.long_long_state(specValues.argPosition)).ptr - data, std::forward<T>(container))
+	: FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.long_long_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleULongLong(T&& container) {
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
-	FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.u_long_long_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
+	argStorage.isCustomFormatter
+	? FlushBuffer(buffer, std::to_chars(data, data + size, customStorage.u_long_long_state(specValues.argPosition)).ptr - data, std::forward<T>(container))
+	: FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.u_long_long_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleBool(T&& container) {
@@ -1626,21 +1730,27 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Writ
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
-	FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.float_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
+	argStorage.isCustomFormatter
+	? FlushBuffer(buffer, std::to_chars(data, data + size, customStorage.float_state(specValues.argPosition)).ptr - data, std::forward<T>(container))
+	: FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.float_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleDouble(T&& container) {
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
-	FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.double_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
+	argStorage.isCustomFormatter
+	? FlushBuffer(buffer, std::to_chars(data, data + size, customStorage.double_state(specValues.argPosition)).ptr - data, std::forward<T>(container))
+	: FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.double_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleLongDouble(T&& container) {
 	auto data { buffer.data() };
 	auto size { buffer.size() };
 	std::memset(data, 0, size);
-	FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.long_double_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
+	argStorage.isCustomFormatter
+	? FlushBuffer(buffer, std::to_chars(data, data + size, customStorage.long_double_state(specValues.argPosition)).ptr - data, std::forward<T>(container))
+	: FlushBuffer(buffer, std::to_chars(data, data + size, argStorage.long_double_state(specValues.argPosition)).ptr - data, std::forward<T>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleConstVoidPtr(T&& container) {
@@ -1649,9 +1759,13 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Writ
 	std::memset(data, 0, size);
 	buffer[ 0 ] = '0';
 	buffer[ 1 ] = 'x';
-	FlushBuffer(buffer,
-	            std::to_chars(data + 2, data + buffer.size() - 2, reinterpret_cast<size_t>(argStorage.const_void_ptr_state(specValues.argPosition)), 16).ptr - data,
-	            std::forward<T>(container));
+	argStorage.isCustomFormatter
+	? FlushBuffer(buffer,
+	              std::to_chars(data + 2, data + buffer.size() - 2, reinterpret_cast<size_t>(customStorage.const_void_ptr_state(specValues.argPosition)), 16).ptr - data,
+	              std::forward<T>(container))
+	: FlushBuffer(buffer,
+	              std::to_chars(data + 2, data + buffer.size() - 2, reinterpret_cast<size_t>(argStorage.const_void_ptr_state(specValues.argPosition)), 16).ptr - data,
+	              std::forward<T>(container));
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleVoidPtr(T&& container) {
@@ -1660,8 +1774,12 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Writ
 	std::memset(data, 0, size);
 	buffer[ 0 ] = '0';
 	buffer[ 1 ] = 'x';
-	FlushBuffer(buffer, std::to_chars(data + 2, data + buffer.size() - 2, reinterpret_cast<size_t>(argStorage.void_ptr_state(specValues.argPosition)), 16).ptr - data,
-	            std::forward<T>(container));
+	argStorage.isCustomFormatter
+	? FlushBuffer(buffer,
+	              std::to_chars(data + 2, data + buffer.size() - 2, reinterpret_cast<size_t>(customStorage.void_ptr_state(specValues.argPosition)), 16).ptr - data,
+	              std::forward<T>(container))
+	: FlushBuffer(buffer, std::to_chars(data + 2, data + buffer.size() - 2, reinterpret_cast<size_t>(argStorage.void_ptr_state(specValues.argPosition)), 16).ptr - data,
+	              std::forward<T>(container));
 }
 
 template<typename T>
@@ -2020,7 +2138,7 @@ inline constexpr void formatter::arg_formatter::ArgFormatter::FormatIsoWeekNumbe
 }
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleCTime(T&& container) {
-	const auto& tm { argStorage.c_time_state(specValues.argPosition) };
+	const auto& tm { argStorage.isCustomFormatter ? customStorage.c_time_state(specValues.argPosition) : argStorage.c_time_state(specValues.argPosition) };
 	switch( timeSpec.timeSpecContainer[ 0 ] ) {
 			case 'a': WriteShortWeekday(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_wday); return;
 			case 'h': [[fallthrough]];
@@ -2111,6 +2229,7 @@ inline constexpr void formatter::arg_formatter::ArgFormatter::FormatCTime(const 
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteSimpleValue(T&& container, const msg_details::SpecType& argType) {
 	using enum msg_details::SpecType;
+
 	switch( argType ) {
 			case StringType: WriteSimpleString(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); return;
 			case CharPointerType: WriteSimpleCString(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); return;
@@ -2120,7 +2239,10 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Writ
 			case LongLongType: WriteSimpleLongLong(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); return;
 			case U_LongLongType: WriteSimpleULongLong(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); return;
 			case BoolType: WriteSimpleBool(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); return;
-			case CharType: container.insert(container.end(), argStorage.char_state(specValues.argPosition)); return;
+			case CharType:
+				container.insert(container.end(),
+				                 (argStorage.isCustomFormatter ? customStorage.char_state(specValues.argPosition) : argStorage.char_state(specValues.argPosition)));
+				return;
 			case FloatType: WriteSimpleFloat(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); return;
 			case DoubleType: WriteSimpleDouble(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); return;
 			case LongDoubleType: WriteSimpleLongDouble(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); return;
@@ -2170,19 +2292,36 @@ constexpr void formatter::arg_formatter::ArgFormatter::FormatPointerType(T&& val
 
 inline constexpr void formatter::arg_formatter::ArgFormatter::FormatArgument(const int& precision, const int& totalWidth, const msg_details::SpecType& type) {
 	using enum msg_details::SpecType;
-	switch( type ) {
-			case IntType: FormatIntegerType(argStorage.int_state(specValues.argPosition)); return;
-			case U_IntType: FormatIntegerType(argStorage.uint_state(specValues.argPosition)); return;
-			case LongLongType: FormatIntegerType(argStorage.long_long_state(specValues.argPosition)); return;
-			case U_LongLongType: FormatIntegerType(argStorage.u_long_long_state(specValues.argPosition)); return;
-			case BoolType: FormatBoolType(argStorage.bool_state(specValues.argPosition)); return;
-			case CharType: FormatCharType(argStorage.char_state(specValues.argPosition)); return;
-			case FloatType: FormatFloatType(argStorage.float_state(specValues.argPosition), precision); return;
-			case DoubleType: FormatFloatType(argStorage.double_state(specValues.argPosition), precision); return;
-			case LongDoubleType: FormatFloatType(argStorage.long_double_state(specValues.argPosition), precision); return;
-			case ConstVoidPtrType: FormatPointerType(argStorage.const_void_ptr_state(specValues.argPosition), type); return;
-			case VoidPtrType: FormatPointerType(argStorage.void_ptr_state(specValues.argPosition), type); return;
-			default: return;
+	if( argStorage.isCustomFormatter ) {
+			switch( type ) {
+					case IntType: FormatIntegerType(customStorage.int_state(specValues.argPosition)); return;
+					case U_IntType: FormatIntegerType(customStorage.uint_state(specValues.argPosition)); return;
+					case LongLongType: FormatIntegerType(customStorage.long_long_state(specValues.argPosition)); return;
+					case U_LongLongType: FormatIntegerType(customStorage.u_long_long_state(specValues.argPosition)); return;
+					case BoolType: FormatBoolType(customStorage.bool_state(specValues.argPosition)); return;
+					case CharType: FormatCharType(customStorage.char_state(specValues.argPosition)); return;
+					case FloatType: FormatFloatType(customStorage.float_state(specValues.argPosition), precision); return;
+					case DoubleType: FormatFloatType(customStorage.double_state(specValues.argPosition), precision); return;
+					case LongDoubleType: FormatFloatType(customStorage.long_double_state(specValues.argPosition), precision); return;
+					case ConstVoidPtrType: FormatPointerType(customStorage.const_void_ptr_state(specValues.argPosition), type); return;
+					case VoidPtrType: FormatPointerType(customStorage.void_ptr_state(specValues.argPosition), type); return;
+					default: return;
+				}
+	} else {
+			switch( type ) {
+					case IntType: FormatIntegerType(argStorage.int_state(specValues.argPosition)); return;
+					case U_IntType: FormatIntegerType(argStorage.uint_state(specValues.argPosition)); return;
+					case LongLongType: FormatIntegerType(argStorage.long_long_state(specValues.argPosition)); return;
+					case U_LongLongType: FormatIntegerType(argStorage.u_long_long_state(specValues.argPosition)); return;
+					case BoolType: FormatBoolType(argStorage.bool_state(specValues.argPosition)); return;
+					case CharType: FormatCharType(argStorage.char_state(specValues.argPosition)); return;
+					case FloatType: FormatFloatType(argStorage.float_state(specValues.argPosition), precision); return;
+					case DoubleType: FormatFloatType(argStorage.double_state(specValues.argPosition), precision); return;
+					case LongDoubleType: FormatFloatType(argStorage.long_double_state(specValues.argPosition), precision); return;
+					case ConstVoidPtrType: FormatPointerType(argStorage.const_void_ptr_state(specValues.argPosition), type); return;
+					case VoidPtrType: FormatPointerType(argStorage.void_ptr_state(specValues.argPosition), type); return;
+					default: return;
+				}
 		}
 }
 
@@ -2350,16 +2489,21 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Form
 
 template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::WriteFormattedString(T&& container, const SpecType& type, const int& precision) {
 	using enum msg_details::SpecType;
+
 	switch( type ) {
 			case StringViewType:
 				return FormatStringType(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container),
-				                        argStorage.string_view_state(specValues.argPosition), precision);
-			case StringType:
-				return FormatStringType(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), argStorage.string_state(specValues.argPosition),
+				                        (argStorage.isCustomFormatter ? customStorage.string_view_state(specValues.argPosition)
+				                                                      : argStorage.string_view_state(specValues.argPosition)),
 				                        precision);
+			case StringType:
+				return FormatStringType(
+				std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container),
+				(argStorage.isCustomFormatter ? customStorage.string_state(specValues.argPosition) : argStorage.string_state(specValues.argPosition)), precision);
 			case CharPointerType:
-				return FormatStringType(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container),
-				                        argStorage.c_string_state(specValues.argPosition), precision);
+				return FormatStringType(
+				std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container),
+				(argStorage.isCustomFormatter ? customStorage.c_string_state(specValues.argPosition) : argStorage.c_string_state(specValues.argPosition)), precision);
 			default: return;
 		}
 }

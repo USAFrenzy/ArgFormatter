@@ -270,7 +270,7 @@ namespace formatter::arg_formatter {
 		inline constexpr void OnInvalidTypeSpec(const SpecType& type);
 		/************************************************************ Formatting Related Functions ************************************************************/
 		template<typename T> constexpr void FormatStringType(T&& container, std::string_view val, const int& precision);
-		constexpr void FormatArgument(const int& precision, const int& totalWidth, const SpecType& type);
+		inline constexpr void FormatArgument(const int& precision, const int& totalWidth, const SpecType& type);
 		template<typename T> constexpr void FormatAlignment(T&& container, const int& totalWidth);
 		template<typename T> constexpr void FormatAlignment(T&& container, std::string_view val, const int& width, int prec);
 		inline constexpr void FormatBoolType(bool& value);
@@ -406,23 +406,24 @@ namespace formatter::arg_formatter {
 		BracketSearchResults bracketResults;
 		SpecFormatting specValues;
 		ArgContainer argStorage;
+		ArgContainer customStorage;
 		std::array<char, AF_ARG_BUFFER_SIZE> buffer;
 		size_t valueSize;
 		std::vector<char> fillBuffer;
 		formatter::af_errors::error_handler errHandle;
 		TimeSpecs timeSpec {};
+		int lastRootCounter;
 	};
+
 #include "ArgFormatterImpl.h"
 }    // namespace formatter::arg_formatter
 
 // These are made static so that when including this file, one can either use and modify the above class or just call the
 // formatting functions directly, like the logger-side of this project where the VFORMAT_TO macros are defined
 namespace formatter {
-
 	namespace globals {
-		static std::unique_ptr<arg_formatter::ArgFormatter> staticFormatter { std::make_unique<arg_formatter::ArgFormatter>() };
+		inline static std::unique_ptr<arg_formatter::ArgFormatter> staticFormatter { std::make_unique<arg_formatter::ArgFormatter>() };
 	}    // namespace globals
-
 	template<typename T, typename... Args> static constexpr void format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args) {
 		globals::staticFormatter->format_to(std::forward<formatter::internal_helper::af_typedefs::FwdMoveIter<T>>(Iter), sv, std::forward<Args>(args)...);
 	}

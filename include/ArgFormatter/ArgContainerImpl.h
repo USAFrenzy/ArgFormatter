@@ -139,6 +139,13 @@ namespace formatter::msg_details {
 		...);
 		return std::move(iter);
 	}
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//! NOTE: This is most likely where issues #1-#3 honestly stem from (%95 sure of this): Similar to how a copy is stored of the spec
+	//! type container to restore from, we should store a copy of the arg container to restore from (quick & dirty but hacky fix)
+	//! GOING FORWARD -> the above is a hacky solution, the better alternative would be to have the custom type have it's own
+	//! argument/spec type containers so as not to interfere with the top level containers
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	template<typename Iter, typename... Args> constexpr auto ArgContainer::CaptureArgs(Iter&& iter, Args&&... args) -> decltype(iter) {
 		counter = 0;
 		std::memset(specContainer.data(), 0, MAX_ARG_COUNT);

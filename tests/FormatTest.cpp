@@ -419,3 +419,98 @@ TEST_CASE("Format Function Test") {
 	REQUIRE(std::format(fmt, a, width) == formatter.format(fmt, a, width));
 	REQUIRE(stdStr == argFmtStr);
 }
+
+////////////////////////////////////////////////////////////////////////////////////////
+// This test is specifically to ensure that the problems encountered with Issues 1-3 are fully solved //
+////////////////////////////////////////////////////////////////////////////////////////
+struct TestStruct
+{
+	int a, b;
+	std::string testMsg;
+};
+template<> struct formatter::CustomFormatter<TestStruct>
+{
+	enum class FmtView
+	{
+		empty,
+		coordinate,
+		x,
+		y,
+		msg,
+		all,
+		testErr
+	};
+	FmtView flag { FmtView::empty };
+
+	inline constexpr void Parse(std::string_view parse) {
+		auto size { parse.size() };
+		auto pos { -1 };
+		for( ;; ) {
+				if( ++pos >= size ) {
+						flag = FmtView::testErr;
+						return;
+				}
+				if( parse[ pos ] == '}' ) return;
+				if( parse[ pos ] != ':' ) continue;
+				if( ++pos >= size ) {
+						flag = FmtView::testErr;
+						return;
+				}
+				switch( parse[ pos ] ) {
+						case 'p': flag = FmtView::coordinate; continue;
+						case 'x': flag = FmtView::x; continue;
+						case 'y': flag = FmtView::y; continue;
+						case 'm': flag = FmtView::msg; continue;
+						case 'a': flag = FmtView::all; continue;
+						default: continue;
+					}
+			}
+	}
+
+	template<typename resultCtx> constexpr auto Format(const TestStruct& p, resultCtx& ctx) const {
+		switch( flag ) {
+				case FmtView::coordinate: formatter::format_to(std::back_inserter(ctx), "({}, {})", p.a, p.b); break;
+				case FmtView::x: formatter::format_to(std::back_inserter(ctx), "{}", p.a); break;
+				case FmtView::y: formatter::format_to(std::back_inserter(ctx), "{}", p.b); break;
+				case FmtView::msg: formatter::format_to(std::back_inserter(ctx), "{}", p.testMsg); break;
+				case FmtView::empty: [[fallthrough]];
+				case FmtView::all: formatter::format_to(std::back_inserter(ctx), "{}\n- Coordinate: ({}, {})", p.testMsg, p.a, p.b); break;
+				case FmtView::testErr: [[fallthrough]];
+				default: throw std::runtime_error("This Is Some Sort Of Error Message\n");
+			}
+	}
+};
+
+TEST_CASE("Custom Formatting: Position And Placement Test With And Without Other Arguments") {
+	TestStruct test { .a = 42, .b = 52, .testMsg = "This Is Text From TestStruct" };
+
+	// without other arguments but interchanging between manual and automatic argument advancement
+	REQUIRE(formatter::format("{:p}", test) == "(42, 52)");
+	REQUIRE(formatter::format("{0:p}", test) == "(42, 52)");
+	REQUIRE(formatter::format("{:x}", test) == "42");
+	REQUIRE(formatter::format("{0:x}", test) == "42");
+	REQUIRE(formatter::format("{:y}", test) == "52");
+	REQUIRE(formatter::format("{0:y}", test) == "52");
+	REQUIRE(formatter::format("{:m}", test) == "This Is Text From TestStruct");
+	REQUIRE(formatter::format("{0:m}", test) == "This Is Text From TestStruct");
+	REQUIRE(formatter::format("{:a}", test) == "This Is Text From TestStruct\n- Coordinate: (42, 52)");
+	REQUIRE(formatter::format("{0:a}", test) == "This Is Text From TestStruct\n- Coordinate: (42, 52)");
+	REQUIRE(formatter::format("{}", test) == "This Is Text From TestStruct\n- Coordinate: (42, 52)");
+	REQUIRE(formatter::format("{0}", test) == "This Is Text From TestStruct\n- Coordinate: (42, 52)");
+
+	// without other arguments but with multiple brackets referencing the same custom type
+	REQUIRE(formatter::format("{:m}\n- Coordinate: (X: {:x}, Y: {:y})", test) == "This Is Text From TestStruct\n- Coordinate: (X: 42, Y: 52)");
+
+	// With other arguments AND interchanging between manual and automatic argument advancement
+	REQUIRE(formatter::format("{:p}\n{}", test, a) == "(42, 52)\n424242424");
+	REQUIRE(formatter::format("{0}\n{1:p}", a, test) == "424242424\n(42, 52)");
+	REQUIRE(formatter::format("{:x}-{}", test, a) == "42-424242424");
+	REQUIRE(formatter::format("{1:x}-{0}", a, test) == "42-424242424");
+	REQUIRE(formatter::format("{:a}\n{}", test, a) == "This Is Text From TestStruct\n- Coordinate: (42, 52)\n424242424");
+	REQUIRE(formatter::format("{1:a}\n{0}", a, test) == "This Is Text From TestStruct\n- Coordinate: (42, 52)\n424242424");
+	// clang-format off
+	REQUIRE(formatter::format("{1:m}\n- Coordinate: (X: {1:x}, Y: {1:y})\n-->{0}", a, test) ==
+		                                                    "This Is Text From TestStruct\n- Coordinate: (X: 42, Y: 52)\n-->424242424");
+	// clang-format on
+}
+////////////////////////////////////////////////////////////////////////////////////////

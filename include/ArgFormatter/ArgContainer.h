@@ -203,6 +203,9 @@ namespace formatter::msg_details {
 		constexpr std::tm& c_time_state(size_t index);
 		constexpr internal_helper::CustomValue& custom_state(size_t index);
 
+	  public:
+		bool isCustomFormatter;
+
 	  private:
 		std::array<internal_helper::af_typedefs::VType, MAX_ARG_COUNT> argContainer {};
 		std::array<SpecType, MAX_ARG_COUNT> specContainer {};
@@ -253,7 +256,7 @@ namespace formatter::msg_details {
 				if constexpr( auto _ { std::remove_cvref_t<std::remove_extent_t<T>> {} }; std::is_same_v<decltype(_), char*> ) {
 						return std::forward<SpecType>(CharPointerType);
 				} else {    // isn't a c-string relative or native type so return CustomType here
-						    // clang-format off
+						// clang-format off
 							static_assert(internal_helper::af_concepts::is_formattable_v<internal_helper::af_typedefs::type<T>>,
 							"A Template Specialization Must Exist For A Custom Type Argument.\n\t For ArgFormatter, This Can Be Done By "
 							"Specializing The CustomFormatter Template For Your Type And Implementing The Parse() And Format() Functions.");
@@ -270,4 +273,5 @@ namespace formatter::msg_details {
 			}
 	}
 }    // namespace formatter::msg_details
+
 #include "ArgContainerImpl.h"
