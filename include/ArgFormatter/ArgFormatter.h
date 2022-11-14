@@ -435,6 +435,24 @@ namespace formatter {
 		globals::staticFormatter->format_to(std::forward<formatter::internal_helper::af_typedefs::FwdMoveIter<T>>(Iter), sv, std::forward<Args>(args)...);
 	}
 
+	namespace custom_helper {
+
+		inline static bool [[nodiscard]] IsCustomFmtProcActive() {
+			return globals::staticFormatter->IsCustomFmtProcActive();
+		}
+
+		inline static void EnableCustomFmtProc(bool enable = true) {
+			globals::staticFormatter->EnableCustomFmtProc(enable);
+		}
+
+		template<typename T, typename U>
+		requires utf_utils::utf_constraints::IsSupportedUSource<T> && utf_utils::utf_constraints::IsSupportedUContainer<U>
+		constexpr void WriteToContainer(T&& buff, size_t size, U&& cont) {
+			globals::staticFormatter->WriteToContainer(std::forward<T>(buff), size, std::forward<U>(cont));
+		}
+
+	}    // namespace custom_helper
+
 	template<typename T, typename... Args>
 	static constexpr void format_to(std::back_insert_iterator<T>&& Iter, const std::locale& locale, std::string_view sv, Args&&... args) {
 		globals::staticFormatter->format_to(std::forward<formatter::internal_helper::af_typedefs::FwdMoveIter<T>>(Iter), locale, sv, std::forward<Args>(args)...);
