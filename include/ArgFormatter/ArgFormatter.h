@@ -242,6 +242,9 @@ namespace formatter::arg_formatter {
 		// another "format" type function call -> more of a handshake than anything else
 		inline constexpr void EnableCustomFmtProc(bool enable = true);
 		inline constexpr bool IsCustomFmtProcActive();
+		template<typename T, typename U>
+		requires utf_utils::utf_constraints::IsSupportedUSource<T> && utf_utils::utf_constraints::IsSupportedUContainer<U>
+		constexpr void WriteToContainer(T&& buff, size_t endPos, U&& container);
 
 	  private:
 		template<typename Iter, typename... Args> constexpr auto CaptureArgs(Iter&& iter, Args&&... args) -> decltype(iter);
