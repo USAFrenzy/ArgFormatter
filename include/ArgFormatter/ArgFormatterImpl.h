@@ -2507,3 +2507,11 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Writ
 			default: return;
 		}
 }
+
+inline constexpr bool formatter::arg_formatter::ArgFormatter::IsCustomFmtProcActive() {
+	return argStorage.isCustomFormatter;
+}
+
+inline constexpr void formatter::arg_formatter::ArgFormatter::EnableCustomFmtProc(bool enable) {
+	argStorage.isCustomFormatter = enable;
+}

@@ -238,6 +238,10 @@ namespace formatter::arg_formatter {
 		template<typename... Args> [[nodiscard]] std::string format(const std::locale& locale, std::string_view sv, Args&&... args);
 		template<typename... Args> [[nodiscard]] std::string format(std::string_view sv, Args&&... args);
 		// clang-format on
+		// useful if overriding how a custom formatter specialization is used if it doesn't call
+		// another "format" type function call -> more of a handshake than anything else
+		inline constexpr void EnableCustomFmtProc(bool enable = true);
+		inline constexpr bool IsCustomFmtProcActive();
 
 	  private:
 		template<typename Iter, typename... Args> constexpr auto CaptureArgs(Iter&& iter, Args&&... args) -> decltype(iter);
