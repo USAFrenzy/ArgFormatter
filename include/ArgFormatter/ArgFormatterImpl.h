@@ -290,19 +290,18 @@ template<typename T> inline constexpr bool is_basic_char_buff_v = is_basic_char_
 
 //  offset used to get the decimal value represented in this use case (same as '0' but faster by a few nanoseconds for direct operations involving this)
 static constexpr int NumericalAsciiOffset { 48 };
-// Only handles a max of two digits and foregoes any real safety checks but is faster than std::from_chars in regards to its usage in VerifyPositionField()
-// by ~38% when compiled with -02. For reference std::from_chars() averaged ~2.1ns and se_from_chars() averages ~1.3ns for this specific use case.
 template<typename IntergralType>
 requires std::is_integral_v<std::remove_cvref_t<IntergralType>>
 static constexpr size_t se_from_chars(const char* begin, const char* end, IntergralType&& value) {
+	if( !IsDigit(*begin) ) {
+			if( ++begin == end ) return 0;
+	}
+	value = *begin - NumericalAsciiOffset;
+	size_t digits { 1 };
 	for( ;; ) {
-			if( !IsDigit(*begin) ) {
-					if( ++begin == end ) return 0;
-			}
-			value = *begin - NumericalAsciiOffset;
-			if( !IsDigit(*(++begin)) ) return 1;
+			if( !IsDigit(*(++begin)) ) return digits;
 			(value *= 10) += (*begin - NumericalAsciiOffset);
-			return 2;
+			++digits;
 		}
 }
 
