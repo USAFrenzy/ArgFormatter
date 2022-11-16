@@ -742,6 +742,9 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Form
 inline constexpr void formatter::arg_formatter::ArgFormatter::VerifyTimeSpec(std::string_view sv, size_t& pos) {
 	// this is for c-time formatting
 	auto size { sv.size() };
+	auto& counterRef { timeSpec.timeSpecCounter };
+	auto counter { counterRef };
+
 	for( ;; ) {
 			switch( sv[ pos ] ) {
 					case 'E':
@@ -752,8 +755,9 @@ inline constexpr void formatter::arg_formatter::ArgFormatter::VerifyTimeSpec(std
 								case 'C': [[fallthrough]];
 								case 'X': [[fallthrough]];
 								case 'Y':
-									timeSpec.timeSpecFormat[ timeSpec.timeSpecCounter ]      = LocaleFormat::localized;
-									timeSpec.timeSpecContainer[ timeSpec.timeSpecCounter++ ] = sv[ pos ];
+									timeSpec.timeSpecFormat[ counter ]    = LocaleFormat::localized;
+									timeSpec.timeSpecContainer[ counter ] = sv[ pos ];
+									++counter;
 									break;
 								default: errHandle.ReportError(af_errors::ErrorType::invalid_ctime_spec);
 							}
@@ -773,8 +777,9 @@ inline constexpr void formatter::arg_formatter::ArgFormatter::VerifyTimeSpec(std
 								case 'U': [[fallthrough]];
 								case 'V': [[fallthrough]];
 								case 'W':
-									timeSpec.timeSpecFormat[ timeSpec.timeSpecCounter ]      = LocaleFormat::localized;
-									timeSpec.timeSpecContainer[ timeSpec.timeSpecCounter++ ] = sv[ pos ];
+									timeSpec.timeSpecFormat[ counter ]    = LocaleFormat::localized;
+									timeSpec.timeSpecContainer[ counter ] = sv[ pos ];
+									++counter;
 									break;
 								default: errHandle.ReportError(af_errors::ErrorType::invalid_ctime_spec);
 							}
@@ -817,14 +822,22 @@ inline constexpr void formatter::arg_formatter::ArgFormatter::VerifyTimeSpec(std
 					case 'Z': [[fallthrough]];
 					case '%': [[fallthrough]];
 					default:
-						timeSpec.timeSpecFormat[ timeSpec.timeSpecCounter ]      = LocaleFormat::standard;
-						timeSpec.timeSpecContainer[ timeSpec.timeSpecCounter++ ] = sv[ pos ];
+						timeSpec.timeSpecFormat[ counter ]    = LocaleFormat::standard;
+						timeSpec.timeSpecContainer[ counter ] = sv[ pos ];
+						++counter;
 						break;
 				}
-			if( ++pos >= size ) return;
+			if( ++pos >= size ) {
+					counterRef = counter;
+					return;
+			}
 			switch( sv[ pos ] ) {
 					case '%': ++pos >= size ? errHandle.ReportError(af_errors::ErrorType::missing_ctime_spec) : void(0); continue;
-					case '}': return;
+					case '}':
+						{
+							counterRef = counter;
+							return;
+						}
 					default: continue;
 				}
 		}
