@@ -1066,6 +1066,7 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 											{
 												argStorage.isCustomFormatter = true;
 												argStorage.custom_state(specValues.argPosition).FormatCallBack(sv);
+												argStorage.isCustomFormatter = false;
 												return;
 											}
 										default:
@@ -1141,6 +1142,7 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 								{
 									argStorage.isCustomFormatter = true;
 									argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket);
+									argStorage.isCustomFormatter = false;
 									break;
 								}
 							case SpecType::CTimeType: WriteSimpleCTime(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); break;
@@ -1160,6 +1162,7 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 						{
 							argStorage.isCustomFormatter = true;
 							argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket);
+							argStorage.isCustomFormatter = false;
 							break;
 						}
 					case SpecType::CTimeType:
@@ -1227,6 +1230,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 											{
 												argStorage.isCustomFormatter = true;
 												argStorage.custom_state(specValues.argPosition).FormatCallBack(sv);
+												argStorage.isCustomFormatter = false;
 												return;
 											}
 										default:
@@ -1302,6 +1306,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 								{
 									argStorage.isCustomFormatter = true;
 									argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket);
+									argStorage.isCustomFormatter = false;
 									break;
 								}
 							case SpecType::CTimeType: WriteSimpleCTime(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); break;
@@ -1321,6 +1326,7 @@ constexpr void formatter::arg_formatter::ArgFormatter::ParseFormatString(std::ba
 						{
 							argStorage.isCustomFormatter = true;
 							argStorage.custom_state(specValues.argPosition).FormatCallBack(argBracket);
+							argStorage.isCustomFormatter = false;
 							break;
 						}
 					case SpecType::CTimeType:
