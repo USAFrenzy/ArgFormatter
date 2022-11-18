@@ -370,7 +370,11 @@ constexpr void formatter::arg_formatter::ArgFormatter::WriteToContainer(T&& buff
 					if constexpr( se_con::is_string_v<U> ) {
 							container.append(tmp.data(), endPos);
 					} else if constexpr( se_con::is_vector_v<U> ) {
-							container.insert(container.end(), tmp.data(), tmp.data() + endPos);
+							auto pos { -1 };
+							for( ;; ) {
+									if( ++pos >= endPos ) break;
+									container.emplace_back(tmp[ pos ]);
+								}
 					} else {
 							auto iter { std::back_inserter(container) };
 							std::copy(tmp.data(), tmp.data() + endPos, iter);
@@ -1081,7 +1085,8 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 						} else if constexpr( std::is_same_v<formatter::internal_helper::af_typedefs::type<T>,
 						                                    std::vector<typename formatter::internal_helper::af_typedefs::type<T>::value_type>> )
 							{
-								container.insert(container.end(), sv.data(), sv.data() + 2);
+								container.emplace_back(sv[ 0 ]);
+								container.emplace_back(sv[ 1 ]);
 						} else {
 								std::copy(sv.data(), sv.data() + 2, std::back_inserter(container));
 							}
@@ -1113,7 +1118,11 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Pars
 					} else if constexpr( std::is_same_v<formatter::internal_helper::af_typedefs::type<T>,
 					                                    std::vector<typename formatter::internal_helper::af_typedefs::type<T>::value_type>> )
 						{
-							container.insert(container.end(), sv.data(), sv.data() + begin);
+							auto pos { -1 };
+							for( ;; ) {
+									if( ++pos >= begin ) break;
+									container.emplace_back(sv[ pos ]);
+								}
 					} else {
 							std::copy(sv.data(), sv.data() + begin, std::back_inserter(container));
 						}
@@ -2193,56 +2202,57 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Writ
 			case 'X': WriteTime(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_hour, tm.tm_min, tm.tm_sec); return;
 			case 'Y': WriteLongYear(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), tm.tm_year); return;
 			case 'Z': WriteTZName(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container)); return;
-			case 'n': [[fallthrough]];
-			case 't': [[fallthrough]];
-			case '%': [[fallthrough]];
+			case 'n': WriteLiteral(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), '\n'); return;
+			case 't': WriteLiteral(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), '\t'); return;
+			case '%': WriteLiteral(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), '%'); return;
 			default: WriteLiteral(std::forward<formatter::internal_helper::af_typedefs::FwdRef<T>>(container), timeSpec.timeSpecContainer[ 0 ]); return;
 		}
 }
 
 inline constexpr void formatter::arg_formatter::ArgFormatter::FormatCTime(const std::tm& time, const int& precision, int startPos, int endPos) {
+	--startPos;
 	for( ;; ) {
-			switch( timeSpec.timeSpecContainer[ startPos ] ) {
-					case 'a': FormatShortWeekday(time.tm_wday); break;
-					case 'h': [[fallthrough]];
-					case 'b': FormatShortMonth(time.tm_mon); break;
-					case 'c': FormatTimeDate(time); break;
-					case 'd': TwoDigitToBuff(time.tm_mday); break;
-					case 'e': FormatSpacePaddedDay(time.tm_mday); break;
-					case 'g': FormatShortIsoWeekYear(time.tm_year, time.tm_yday, time.tm_wday); break;
-					case 'j': FormatDayOfYear(time.tm_yday); break;
-					case 'm': TwoDigitToBuff(time.tm_mon + 1); break;
-					case 'p': FormatAMPM(time.tm_hour); break;
-					case 'r': Format12HourTime(time.tm_hour, time.tm_min, time.tm_sec, precision); break;
-					case 'w': FormatWeekdayDec(time.tm_wday); break;
-					case 'u': FormatIsoWeekDec(time.tm_wday); break;
-					case 'D': [[fallthrough]];
-					case 'x': FormatMMDDYY(time.tm_mon, time.tm_mday, time.tm_year); break;
-					case 'y': FormatShortYear(time.tm_year); break;
-					case 'z': FormatUtcOffset(); break;
-					case 'A': FormatLongWeekday(time.tm_wday); break;
-					case 'B': FormatLongMonth(time.tm_mon); break;
-					case 'C': FormatTruncatedYear(time.tm_year); break;
-					case 'F': FormatYYYYMMDD(time.tm_year, time.tm_mon, time.tm_mday); break;
-					case 'G': FormatLongIsoWeekYear(time.tm_year, time.tm_yday, time.tm_wday); break;
-					case 'H': TwoDigitToBuff(time.tm_hour); break;
-					case 'I': TwoDigitToBuff(time.tm_hour > 12 ? time.tm_hour - 12 : time.tm_hour); break;
-					case 'M': TwoDigitToBuff(time.tm_min); break;
-					case 'R': Format24HM(time.tm_hour, time.tm_min); break;
-					case 'S': TwoDigitToBuff(time.tm_sec); break;
-					case 'T': Format24HourTime(time.tm_hour, time.tm_min, time.tm_sec, precision); break;
-					case 'U': TwoDigitToBuff((10 + time.tm_yday - time.tm_wday) / 7); break;
-					case 'V': FormatIsoWeekNumber(time.tm_year, time.tm_yday, time.tm_wday); break;
-					case 'W': TwoDigitToBuff((time.tm_yday + 7 - (time.tm_wday == 0 ? 6 : time.tm_wday - 1)) / 7); break;
-					case 'X': Format24HourTime(time.tm_hour, time.tm_min, time.tm_sec, precision); break;
-					case 'Y': FormatLongYear(time.tm_year); break;
-					case 'Z': FormatTZName(); break;
-					case 'n': [[fallthrough]];
-					case 't': [[fallthrough]];
-					case '%': [[fallthrough]];
-					default: FormatLiteral(timeSpec.timeSpecContainer[ startPos ]); break;
-				}
 			if( ++startPos >= endPos ) return;
+			switch( timeSpec.timeSpecContainer[ startPos ] ) {
+					case 'a': FormatShortWeekday(time.tm_wday); continue;
+					case 'h': [[fallthrough]];
+					case 'b': FormatShortMonth(time.tm_mon); continue;
+					case 'c': FormatTimeDate(time); continue;
+					case 'd': TwoDigitToBuff(time.tm_mday); continue;
+					case 'e': FormatSpacePaddedDay(time.tm_mday); continue;
+					case 'g': FormatShortIsoWeekYear(time.tm_year, time.tm_yday, time.tm_wday); continue;
+					case 'j': FormatDayOfYear(time.tm_yday); continue;
+					case 'm': TwoDigitToBuff(time.tm_mon + 1); continue;
+					case 'p': FormatAMPM(time.tm_hour); continue;
+					case 'r': Format12HourTime(time.tm_hour, time.tm_min, time.tm_sec, precision); continue;
+					case 'w': FormatWeekdayDec(time.tm_wday); continue;
+					case 'u': FormatIsoWeekDec(time.tm_wday); continue;
+					case 'D': [[fallthrough]];
+					case 'x': FormatMMDDYY(time.tm_mon, time.tm_mday, time.tm_year); continue;
+					case 'y': FormatShortYear(time.tm_year); continue;
+					case 'z': FormatUtcOffset(); continue;
+					case 'A': FormatLongWeekday(time.tm_wday); continue;
+					case 'B': FormatLongMonth(time.tm_mon); continue;
+					case 'C': FormatTruncatedYear(time.tm_year); continue;
+					case 'F': FormatYYYYMMDD(time.tm_year, time.tm_mon, time.tm_mday); continue;
+					case 'G': FormatLongIsoWeekYear(time.tm_year, time.tm_yday, time.tm_wday); continue;
+					case 'H': TwoDigitToBuff(time.tm_hour); continue;
+					case 'I': TwoDigitToBuff(time.tm_hour > 12 ? time.tm_hour - 12 : time.tm_hour); continue;
+					case 'M': TwoDigitToBuff(time.tm_min); continue;
+					case 'R': Format24HM(time.tm_hour, time.tm_min); continue;
+					case 'S': TwoDigitToBuff(time.tm_sec); continue;
+					case 'T': Format24HourTime(time.tm_hour, time.tm_min, time.tm_sec, precision); continue;
+					case 'U': TwoDigitToBuff((10 + time.tm_yday - time.tm_wday) / 7); continue;
+					case 'V': FormatIsoWeekNumber(time.tm_year, time.tm_yday, time.tm_wday); continue;
+					case 'W': TwoDigitToBuff((time.tm_yday + 7 - (time.tm_wday == 0 ? 6 : time.tm_wday - 1)) / 7); continue;
+					case 'X': Format24HourTime(time.tm_hour, time.tm_min, time.tm_sec, precision); continue;
+					case 'Y': FormatLongYear(time.tm_year); continue;
+					case 'Z': FormatTZName(); continue;
+					case 'n': FormatLiteral('\n'); continue;
+					case 't': FormatLiteral('\t'); continue;
+					case '%': FormatLiteral('%'); continue;
+					default: FormatLiteral(timeSpec.timeSpecContainer[ startPos ]); continue;
+				}
 		}
 }
 
