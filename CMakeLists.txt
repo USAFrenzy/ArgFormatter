@@ -49,7 +49,7 @@ if (BUILD_COMPILED_LIB)
         GITHUB_REPOSITORY
         USAFrenzy/UTF-Utils
         VERSION
-        1.0.1
+        1.0.2
         OPTIONS
         "BUILD_COMPILED_LIBRARY ON"
     )
@@ -73,7 +73,7 @@ elseif (NOT BUILD_COMPILED_LIB AND COMMAND COMPILED_LIBRARY)
             GITHUB_REPOSITORY
             USAFrenzy/UTF-Utils
             VERSION
-            1.0.1
+            1.0.2
             "BUILD_COMPILED_LIBRARY OFF"
         )
         file(COPY ${utfutils_SOURCE_DIR}/include/UTF-Utils
@@ -90,7 +90,7 @@ else ()
         GITHUB_REPOSITORY
         USAFrenzy/UTF-Utils
         VERSION
-        1.0.1
+        1.0.2
         "BUILD_COMPILED_LIBRARY OFF"
     )
     file(COPY ${utfutils_SOURCE_DIR}/include/UTF-Utils
