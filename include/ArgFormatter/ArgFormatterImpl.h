@@ -248,13 +248,30 @@ inline void formatter::arg_formatter::ArgFormatter::LocalizeCTime(const std::loc
 }
 
 inline void formatter::arg_formatter::ArgFormatter::FormatSubseconds(int precision) {
-	auto begin { buffer.data() };
-	auto subSeconds { std::chrono::time_point_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now()).time_since_epoch().count() };
+	std::array<char, 24> buff {};
+	auto begin { buff.data() };
+	auto subSeconds { std::chrono::floor<std::chrono::nanoseconds>(std::chrono::system_clock::now()) };
+	auto length { std::to_chars(begin, begin + 24, subSeconds.time_since_epoch().count()).ptr - begin };
+	//  Set 'pos' to be the offset that only deals with subseconds; the `pos -= (pos/10);` line is only needed due to the increment in the first check below
+	auto pos { (length % 10) + (length / 10) };
+	if( pos >= 10 ) pos -= (pos / 10);
+	auto end { pos + (++precision) };    // increment precision due to the increment in pos below
 	if( !specValues.localize ) {
 			buffer[ valueSize++ ] = '.';
-			std::to_chars(begin + valueSize, begin + AF_ARG_BUFFER_SIZE, subSeconds);
-	}
-	valueSize += precision;
+			for( ;; ) {
+					if( ++pos >= end ) break;
+					buffer[ valueSize ] = buff[ pos ];
+					++valueSize;
+				}
+	} else {
+			auto& timeBuff { timeSpec.localizationBuff };
+			timeBuff[ valueSize++ ] = '.';
+			for( ;; ) {
+					if( ++pos >= end ) break;
+					timeBuff[ valueSize ] = buff[ pos ];
+					++valueSize;
+				}
+		}
 }
 
 inline void formatter::arg_formatter::ArgFormatter::FormatUtcOffset() {
@@ -293,9 +310,7 @@ static constexpr int NumericalAsciiOffset { 48 };
 template<typename IntergralType>
 requires std::is_integral_v<std::remove_cvref_t<IntergralType>>
 static constexpr size_t se_from_chars(const char* begin, const char* end, IntergralType&& value) {
-	if( !IsDigit(*begin) ) {
-			if( ++begin == end ) return 0;
-	}
+	if( !IsDigit(*begin) ) return 0;
 	value = *begin - NumericalAsciiOffset;
 	size_t digits { 1 };
 	for( ;; ) {
@@ -788,6 +803,26 @@ inline constexpr void formatter::arg_formatter::ArgFormatter::VerifyTimeSpec(std
 								default: errHandle.ReportError(af_errors::ErrorType::invalid_ctime_spec);
 							}
 						break;
+					case 'T':
+						{
+							if( sv[ ++pos ] == '.' ) {
+									timeSpec.timeSpecFormat[ counter ]    = LocaleFormat::standard;
+									timeSpec.timeSpecContainer[ counter ] = 'T';
+									++counter;
+									if( ++pos >= size ) {
+											--pos;
+											break;
+									}
+									pos += se_from_chars(sv.data() + pos, sv.data() + sv.size(), specValues.precision);
+									break;
+							} else {
+									timeSpec.timeSpecFormat[ counter ]    = LocaleFormat::standard;
+									timeSpec.timeSpecContainer[ counter ] = 'T';
+									++counter;
+									--pos;
+									break;
+								}
+						}
 					case 'a': [[fallthrough]];
 					case 'b': [[fallthrough]];
 					case 'c': [[fallthrough]];
@@ -817,7 +852,6 @@ inline constexpr void formatter::arg_formatter::ArgFormatter::VerifyTimeSpec(std
 					case 'M': [[fallthrough]];
 					case 'R': [[fallthrough]];
 					case 'S': [[fallthrough]];
-					case 'T': [[fallthrough]];
 					case 'U': [[fallthrough]];
 					case 'V': [[fallthrough]];
 					case 'W': [[fallthrough]];
