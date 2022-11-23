@@ -262,11 +262,11 @@ namespace formatter::arg_formatter {
 		inline constexpr bool VerifyPositionalField(std::string_view sv, size_t& start, unsigned char& positionValue);
 		inline constexpr void VerifyFillAlignField(std::string_view sv, size_t& currentPosition, const SpecType& argType);
 		inline constexpr void VerifyFillAlignTimeField(std::string_view sv, size_t& currentPosition);
-		inline constexpr void VerifyAltField(std::string_view sv, const SpecType& argType);
+		inline constexpr void VerifyAltField(const SpecType& argType);
 		inline constexpr void VerifyWidthField(std::string_view sv, size_t& currentPosition);
 		inline constexpr void VerifyPrecisionField(std::string_view sv, size_t& currentPosition, const SpecType& argType);
 		inline constexpr void VerifyTimePrecisionField(std::string_view sv, size_t& currentPosition);
-		inline constexpr void VerifyLocaleField(std::string_view sv, size_t& currentPosition, const SpecType& argType);
+		inline constexpr void VerifyLocaleField(size_t& currentPosition, const SpecType& argType);
 		inline constexpr void HandlePotentialTypeField(const char& ch, const SpecType& argType);
 		inline constexpr bool IsSimpleSubstitution(const SpecType& argType, const int& precision);
 		inline constexpr void OnAlignLeft(const char& ch, size_t& pos);
@@ -277,7 +277,7 @@ namespace formatter::arg_formatter {
 		inline constexpr void OnInvalidTypeSpec(const SpecType& type);
 		/************************************************************ Formatting Related Functions ************************************************************/
 		template<typename T> constexpr void FormatStringType(T&& container, std::string_view val, const int& precision);
-		inline constexpr void FormatArgument(const int& precision, const int& totalWidth, const SpecType& type);
+		inline constexpr void FormatArgument(const int& precision, const SpecType& type);
 		template<typename T> constexpr void FormatAlignment(T&& container, const int& totalWidth);
 		template<typename T> constexpr void FormatAlignment(T&& container, std::string_view val, const int& width, int prec);
 		inline constexpr void FormatBoolType(bool& value);
@@ -298,7 +298,7 @@ namespace formatter::arg_formatter {
 		template<typename T> constexpr void FormatTimeField(T&& container);
 		template<typename T> constexpr void FormatTimeField(T&& container, const std::locale& loc);
 		inline constexpr void FormatCTime(const std::tm& cTimeStruct, const int& precision, int startPos = 0, int endPos = 0);
-		inline void LocalizeCTime(const std::locale& loc, std::tm& timeStruct, const int& precision);
+		inline void LocalizeCTime(const std::locale& loc, const std::tm& timeStruct, const int& precision);
 		template<typename T> constexpr void WriteSimpleCTime(T&& container);
 		template<typename T> constexpr void Write24HourTime(T&& container, const int& hour, const int& min, const int& sec);
 		template<typename T> constexpr void WriteShortMonth(T&& container, const int& mon);
@@ -365,9 +365,9 @@ namespace formatter::arg_formatter {
 		//  NOTE: Due to the usage of the numpunct functions, which are not constexpr, these functions can't really be specified as constexpr
 		inline void LocalizeBool(const std::locale& loc);
 		inline void FormatIntegralGrouping(const std::locale& loc, size_t end);
-		inline void LocalizeArgument(const std::locale& loc, const int& precision, const int& totalWidth, const SpecType& type);
-		inline void LocalizeIntegral(const std::locale& loc, const int& precision, const int& totalWidth, const SpecType& type);
-		inline void LocalizeFloatingPoint(const std::locale& loc, const int& precision, const int& totalWidth, const SpecType& type);
+		inline void LocalizeArgument(const std::locale& loc, const int& precision, const SpecType& type);
+		inline void LocalizeIntegral(const std::locale& loc, const int& precision, const SpecType& type);
+		inline void LocalizeFloatingPoint(const std::locale& loc, const int& precision, const SpecType& type);
 		/******************************************************** Container Writing Related Functions *********************************************************/
 		inline constexpr void BufferToUpper(char* begin, const char* end);
 		inline constexpr void FillBuffWithChar(const int& totalWidth);
