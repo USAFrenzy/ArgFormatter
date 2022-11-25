@@ -24,13 +24,8 @@ namespace formatter {
 
 	// convenience typedefs
 	namespace internal_helper::af_typedefs {
-		template<typename T> using type        = std::remove_cvref_t<T>;
-		template<typename T> using FwdRef      = std::add_lvalue_reference_t<type<T>>;
-		template<typename T> using FwdConstRef = std::add_lvalue_reference_t<std::add_const_t<type<T>>>;
-		template<typename T> using FwdMove     = std::add_rvalue_reference_t<type<T>>;
-		template<typename T> using Iterator    = std::back_insert_iterator<type<T>>;
-		template<typename T> using FwdMoveIter = std::add_rvalue_reference_t<Iterator<T>>;
-		template<typename T> using FwdRefIter  = std::add_lvalue_reference_t<Iterator<T>>;
+		template<typename T> using type     = std::remove_cvref_t<T>;
+		template<typename T> using Iterator = std::back_insert_iterator<type<T>>;
 	}    // namespace internal_helper::af_typedefs
 
 	template<typename Value> struct CustomFormatter
@@ -51,10 +46,8 @@ namespace formatter {
 		template<typename T> struct IteratorAccessHelper: public std::back_insert_iterator<T>
 		{
 			using std::back_insert_iterator<T>::container_type;
-			constexpr explicit IteratorAccessHelper(std::back_insert_iterator<T>&(Iter))
-				: std::back_insert_iterator<T>(std::forward<af_typedefs::FwdRefIter<T>>(Iter)) { }
-			constexpr explicit IteratorAccessHelper(std::back_insert_iterator<T> && (Iter))
-				: std::back_insert_iterator<T>(std::forward<af_typedefs::FwdMoveIter<T>>(Iter)) { }
+			constexpr explicit IteratorAccessHelper(std::back_insert_iterator<T>&(Iter)): std::back_insert_iterator<T>(Iter) { }
+			constexpr explicit IteratorAccessHelper(std::back_insert_iterator<T> && (Iter)): std::back_insert_iterator<T>(std::move(Iter)) { }
 			constexpr IteratorAccessHelper()                                       = delete;
 			constexpr IteratorAccessHelper(const IteratorAccessHelper&)            = delete;
 			constexpr IteratorAccessHelper& operator=(const IteratorAccessHelper&) = delete;
@@ -95,7 +88,7 @@ namespace formatter {
 			}
 			~CustomValue() = default;
 
-			constexpr void FormatCallBack(std::string_view parseView) {
+			constexpr void FormatCallBack(std::string_view parseView) const {
 				CustomFormatCallBack(parseView, data, container);
 			}
 
@@ -185,23 +178,23 @@ namespace formatter::msg_details {
 		template<typename Iter, typename T> constexpr auto StoreCustomArg(Iter&& iter, T&& arg) -> decltype(iter);
 
 		constexpr std::array<internal_helper::af_typedefs::VType, MAX_ARG_COUNT>& ArgStorage();
-		constexpr std::array<SpecType, MAX_ARG_COUNT>& SpecTypesCaptured();
-		constexpr std::string_view string_state(size_t index);
-		constexpr std::string_view c_string_state(size_t index);
-		constexpr std::string_view string_view_state(size_t index);
-		constexpr int& int_state(size_t index);
-		constexpr unsigned int& uint_state(size_t index);
-		constexpr long long& long_long_state(size_t index);
-		constexpr unsigned long long& u_long_long_state(size_t index);
-		constexpr bool& bool_state(size_t index);
-		constexpr char& char_state(size_t index);
-		constexpr float& float_state(size_t index);
-		constexpr double& double_state(size_t index);
-		constexpr long double& long_double_state(size_t index);
-		constexpr const void* const_void_ptr_state(size_t index);
-		constexpr void* void_ptr_state(size_t index);
-		constexpr std::tm& c_time_state(size_t index);
-		constexpr internal_helper::CustomValue& custom_state(size_t index);
+		constexpr const std::array<SpecType, MAX_ARG_COUNT>& SpecTypesCaptured() const;
+		constexpr const std::string_view string_state(size_t index) const;
+		constexpr const std::string_view c_string_state(size_t index) const;
+		constexpr const std::string_view string_view_state(size_t index) const;
+		constexpr const int& int_state(size_t index) const;
+		constexpr const unsigned int& uint_state(size_t index) const;
+		constexpr const long long& long_long_state(size_t index) const;
+		constexpr const unsigned long long& u_long_long_state(size_t index) const;
+		constexpr const bool& bool_state(size_t index) const;
+		constexpr const char& char_state(size_t index) const;
+		constexpr const float& float_state(size_t index) const;
+		constexpr const double& double_state(size_t index) const;
+		constexpr const long double& long_double_state(size_t index) const;
+		constexpr const void* const_void_ptr_state(size_t index) const;
+		constexpr void* void_ptr_state(size_t index) const;
+		constexpr const std::tm& c_time_state(size_t index) const;
+		constexpr const internal_helper::CustomValue& custom_state(size_t index) const;
 
 	  public:
 		bool isCustomFormatter;

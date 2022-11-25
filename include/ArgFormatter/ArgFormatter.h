@@ -280,8 +280,8 @@ namespace formatter::arg_formatter {
 		inline constexpr void FormatArgument(const int& precision, const SpecType& type);
 		template<typename T> constexpr void FormatAlignment(T&& container, const int& totalWidth);
 		template<typename T> constexpr void FormatAlignment(T&& container, std::string_view val, const int& width, int prec);
-		inline constexpr void FormatBoolType(bool& value);
-		inline constexpr void FormatCharType(char& value);
+		inline constexpr void FormatBoolType(const bool& value);
+		inline constexpr void FormatCharType(const char& value);
 		template<typename T>
 		requires std::is_integral_v<std::remove_cvref_t<T>>
 		constexpr void FormatIntegerType(T&& value);
@@ -294,7 +294,7 @@ namespace formatter::arg_formatter {
 		/********************************************************** Time Formatting Related Functions *********************************************************/
 		template<typename T>
 		requires std::is_integral_v<std::remove_cvref_t<T>>
-		constexpr void TwoDigitToBuff(T val);
+		constexpr void TwoDigitToBuff(T&& val);
 		template<typename T> constexpr void FormatTimeField(T&& container);
 		template<typename T> constexpr void FormatTimeField(T&& container, const std::locale& loc);
 		inline constexpr void FormatCTime(const std::tm& cTimeStruct, const int& precision, int startPos = 0, int endPos = 0);
@@ -336,31 +336,31 @@ namespace formatter::arg_formatter {
 
 		// the distinct difference from these functions vs the 'Write' variants is that they should also handle localization & precision
 		// Right now, they are just one-for-one with one-another, minus the actual container writing portion
-		inline void FormatSubseconds(int precision);
+		inline void FormatSubseconds(const int& precision);
 		inline void FormatUtcOffset();
 		inline void FormatTZName();
-		inline constexpr void Format24HourTime(int hour, int min, int sec, int precision = 0);
-		inline constexpr void FormatShortWeekday(int wkday);
-		inline constexpr void FormatShortMonth(int mon);
+		inline constexpr void Format24HourTime(const int& hour, const int& min, const int& sec, int precision = 0);
+		inline constexpr void FormatShortWeekday(const int& wkday);
+		inline constexpr void FormatShortMonth(const int& mon);
 		inline constexpr void FormatTimeDate(const std::tm& time);
-		inline constexpr void FormatShortYear(int year);
-		inline constexpr void FormatSpacePaddedDay(int day);
-		inline constexpr void FormatShortIsoWeekYear(int year, int yrday, int wkday);
-		inline constexpr void FormatDayOfYear(int day);
-		inline constexpr void FormatLiteral(unsigned char lit);
-		inline constexpr void FormatAMPM(int hr);
-		inline constexpr void Format12HourTime(int hour, int min, int sec, int precision = 0);
-		inline constexpr void FormatWeekdayDec(int wkday);
-		inline constexpr void FormatMMDDYY(int month, int day, int year);
-		inline constexpr void FormatIsoWeekDec(int wkday);
-		inline constexpr void FormatLongWeekday(int wkday);
-		inline constexpr void FormatLongMonth(int mon);
-		inline constexpr void FormatYYYYMMDD(int year, int mon, int day);
-		inline constexpr void FormatLongIsoWeekYear(int year, int yrday, int wkday);
-		inline constexpr void FormatLongYear(int year);
-		inline constexpr void FormatTruncatedYear(int year);
-		inline constexpr void Format24HM(int hour, int min);
-		inline constexpr void FormatIsoWeekNumber(int year, int yrday, int wkday);
+		inline constexpr void FormatShortYear(const int& year);
+		inline constexpr void FormatSpacePaddedDay(const int& day);
+		inline constexpr void FormatShortIsoWeekYear(const int& year, const int& yrday, const int& wkday);
+		inline constexpr void FormatDayOfYear(const int& day);
+		inline constexpr void FormatLiteral(const unsigned char& lit);
+		inline constexpr void FormatAMPM(const int& hr);
+		inline constexpr void Format12HourTime(const int& hour, const int& min, const int& sec, int precision = 0);
+		inline constexpr void FormatWeekdayDec(const int& wkday);
+		inline constexpr void FormatMMDDYY(const int& month, const int& day, const int& year);
+		inline constexpr void FormatIsoWeekDec(const int& wkday);
+		inline constexpr void FormatLongWeekday(const int& wkday);
+		inline constexpr void FormatLongMonth(const int& mon);
+		inline constexpr void FormatYYYYMMDD(const int& year, const int& mon, const int& day);
+		inline constexpr void FormatLongIsoWeekYear(const int& year, const int& yrday, const int& wkday);
+		inline constexpr void FormatLongYear(const int& year);
+		inline constexpr void FormatTruncatedYear(const int& year);
+		inline constexpr void Format24HM(const int& hour, const int& min);
+		inline constexpr void FormatIsoWeekNumber(const int& year, const int& yrday, const int& wkday);
 
 		//  NOTE: Due to the usage of the numpunct functions, which are not constexpr, these functions can't really be specified as constexpr
 		inline void LocalizeBool(const std::locale& loc);
@@ -431,9 +431,6 @@ namespace formatter {
 	namespace globals {
 		inline static std::unique_ptr<arg_formatter::ArgFormatter> staticFormatter { std::make_unique<arg_formatter::ArgFormatter>() };
 	}    // namespace globals
-	template<typename T, typename... Args> static constexpr void format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args) {
-		globals::staticFormatter->format_to(std::forward<formatter::internal_helper::af_typedefs::FwdMoveIter<T>>(Iter), sv, std::forward<Args>(args)...);
-	}
 
 	namespace custom_helper {
 
@@ -453,22 +450,26 @@ namespace formatter {
 
 	}    // namespace custom_helper
 
+	template<typename T, typename... Args> static constexpr void format_to(std::back_insert_iterator<T>&& Iter, std::string_view sv, Args&&... args) {
+		globals::staticFormatter->format_to(std::move(Iter), sv, std::forward<Args>(args)...);
+	}
+
 	template<typename T, typename... Args>
 	static constexpr void format_to(std::back_insert_iterator<T>&& Iter, const std::locale& locale, std::string_view sv, Args&&... args) {
-		globals::staticFormatter->format_to(std::forward<formatter::internal_helper::af_typedefs::FwdMoveIter<T>>(Iter), locale, sv, std::forward<Args>(args)...);
+		globals::staticFormatter->format_to(std::move(Iter), locale, sv, std::forward<Args>(args)...);
 	}
 
 	template<typename... Args> [[nodiscard]] static std::string format(std::string_view sv, Args&&... args) {
 		std::string tmp;
 		tmp.reserve(formatter::arg_formatter::ReserveCapacity(std::forward<Args>(args)...));
-		globals::staticFormatter->format_to(std::back_inserter(tmp), sv, std::forward<Args>(args)...);
+		globals::staticFormatter->format_to(std::move(std::back_inserter(tmp)), sv, std::forward<Args>(args)...);
 		return tmp;
 	}
 
 	template<typename... Args> [[nodiscard]] static std::string format(const std::locale& locale, std::string_view sv, Args&&... args) {
 		std::string tmp;
 		tmp.reserve(formatter::arg_formatter::ReserveCapacity(std::forward<Args>(args)...));
-		globals::staticFormatter->format_to(std::back_inserter(tmp), locale, sv, std::forward<Args>(args)...);
+		globals::staticFormatter->format_to(std::move(std::back_inserter(tmp)), locale, sv, std::forward<Args>(args)...);
 		return tmp;
 	}
 
