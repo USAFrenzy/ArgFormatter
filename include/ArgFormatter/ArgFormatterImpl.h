@@ -748,6 +748,7 @@ inline constexpr void formatter::arg_formatter::ArgFormatter::VerifyTimeSpec(std
 					case 'g': [[fallthrough]];
 					case 'h': [[fallthrough]];
 					case 'j': [[fallthrough]];
+					case 'k': [[fallthrough]];
 					case 'm': [[fallthrough]];
 					case 'n': [[fallthrough]];
 					case 'p': [[fallthrough]];
@@ -1676,10 +1677,11 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Writ
 	WriteBufferToContainer(std::forward<T>(container));
 }
 
-inline constexpr void formatter::arg_formatter::ArgFormatter::FormatShortYear(const int& year) {
-	buffer[ valueSize ] = static_cast<char>(((year % 10) / 10) + NumericalAsciiOffset);
+inline constexpr void formatter::arg_formatter::ArgFormatter::FormatShortYear(const int& yr) {
+	auto year { yr % 100 };
+	buffer[ valueSize ] = static_cast<char>((year / 10) + NumericalAsciiOffset);
 	++valueSize;
-	buffer[ valueSize ] = static_cast<char>(((year % 10) % 10) + NumericalAsciiOffset);
+	buffer[ valueSize ] = static_cast<char>((year % 10) + NumericalAsciiOffset);
 	++valueSize;
 }
 
@@ -1994,6 +1996,7 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Writ
 			case 'e': WriteSpacePaddedDay(std::forward<T>(container), tm.tm_mday); return;
 			case 'g': WriteShortIsoWeekYear(std::forward<T>(container), tm.tm_year, tm.tm_yday, tm.tm_wday); return;
 			case 'j': WriteDayOfYear(std::forward<T>(container), tm.tm_yday); return;
+			case 'k': WriteWkday_DDMMMYY_Time(std::forward<T>(container), tm); return;
 			case 'm': WritePaddedMonth(std::forward<T>(container), tm.tm_mon); return;
 			case 'p': WriteAMPM(std::forward<T>(container), tm.tm_hour); return;
 			case 'r': Write12HourTime(std::forward<T>(container), tm.tm_hour, tm.tm_min, tm.tm_sec); return;
@@ -2027,6 +2030,23 @@ template<typename T> constexpr void formatter::arg_formatter::ArgFormatter::Writ
 		}
 }
 
+template<typename T> inline constexpr void formatter::arg_formatter::ArgFormatter::WriteWkday_DDMMMYY_Time(T&& container, const std::tm& time) {
+	FormatWkday_DDMMMYY_Time(time);
+	WriteBufferToContainer(std::forward<T>(container));
+}
+
+inline constexpr void formatter::arg_formatter::ArgFormatter::FormatWkday_DDMMMYY_Time(const std::tm& time, int precision) {
+	FormatShortWeekday(time.tm_wday);
+	buffer[ valueSize ] = ' ';
+	++valueSize;
+	FormatSpacePaddedDay(time.tm_mday);
+	FormatShortMonth(time.tm_mon);
+	FormatShortYear(time.tm_year);
+	buffer[ valueSize ] = ' ';
+	++valueSize;
+	Format24HourTime(time.tm_hour, time.tm_min, time.tm_sec, precision);
+}
+
 inline constexpr void formatter::arg_formatter::ArgFormatter::FormatCTime(const std::tm& time, const int& precision, int startPos, int endPos) {
 	--startPos;
 	for( ;; ) {
@@ -2040,6 +2060,7 @@ inline constexpr void formatter::arg_formatter::ArgFormatter::FormatCTime(const 
 					case 'e': FormatSpacePaddedDay(time.tm_mday); continue;
 					case 'g': FormatShortIsoWeekYear(time.tm_year, time.tm_yday, time.tm_wday); continue;
 					case 'j': FormatDayOfYear(time.tm_yday); continue;
+					case 'k': FormatWkday_DDMMMYY_Time(time, precision); continue;
 					case 'm': TwoDigitToBuff(time.tm_mon + 1); continue;
 					case 'p': FormatAMPM(time.tm_hour); continue;
 					case 'r': Format12HourTime(time.tm_hour, time.tm_min, time.tm_sec, precision); continue;

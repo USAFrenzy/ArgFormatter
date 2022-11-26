@@ -333,6 +333,7 @@ namespace formatter::arg_formatter {
 		template<typename T> constexpr void WriteWeek(T&& container, const int& yrday, const int& wkday);
 		template<typename T> constexpr void WriteIsoWeek(T&& container, const int& yrday, const int& wkday);
 		template<typename T> constexpr void WriteIsoWeekNumber(T&& container, const int& year, const int& yrday, const int& wkday);
+		template<typename T> constexpr void WriteWkday_DDMMMYY_Time(T&& container, const std::tm& time);
 
 		// the distinct difference from these functions vs the 'Write' variants is that they should also handle localization & precision
 		// Right now, they are just one-for-one with one-another, minus the actual container writing portion
@@ -361,6 +362,7 @@ namespace formatter::arg_formatter {
 		inline constexpr void FormatTruncatedYear(const int& year);
 		inline constexpr void Format24HM(const int& hour, const int& min);
 		inline constexpr void FormatIsoWeekNumber(const int& year, const int& yrday, const int& wkday);
+		inline constexpr void FormatWkday_DDMMMYY_Time(const std::tm& time, int precision = 0);
 
 		//  NOTE: Due to the usage of the numpunct functions, which are not constexpr, these functions can't really be specified as constexpr
 		inline void LocalizeBool(const std::locale& loc);
